@@ -1,0 +1,3 @@
+material label,elastic modulus,shear modulus,density,strength
+steel,200E6,79.3E9,8E3,250E6
+aluminium,70E6,27.6E6,2.7E3,276

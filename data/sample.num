@@ -1,0 +1,5 @@
+point label,x,y,z,theta_x,theta_y,theta_z
+bottom left,-1.0,-1.0,0.0,0.0,0.0,0.0
+top right,,,0.0,0.0,0.0,0.0
+bottom right,,,0.0,0.0,0.0,0.0
+top left,,,0.0,0.0,0.0,0.0

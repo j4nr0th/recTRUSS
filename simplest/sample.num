@@ -1,0 +1,6 @@
+point label,x,y,z,theta_x,theta_y,theta_z
+A,,,0.0,,,
+B,,0.0,0.0,,,
+C,,,0.0,,,
+D,2.0,0.0,0.0,,,
+
