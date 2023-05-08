@@ -1,14 +1,12 @@
-import numpy as np
-import pandas as pd
-
 from dataclasses import dataclass
+
+import pandas as pd
 
 
 @dataclass
 class Material:
     label: str
     E: float
-    G: float
     rho: float
     sigma_y: float
 
@@ -19,6 +17,6 @@ def load_materials_from_file(filename: str) -> list[Material]:
     entry_count: int = len(data_in)
     out_list = [0] * entry_count
     for i in range(entry_count):
-        out_list[i] = Material(data_in["material label"][i], data_in["elastic modulus"][i], data_in["shear modulus"][i],
+        out_list[i] = Material(data_in["material label"][i], data_in["elastic modulus"][i],
                                data_in["density"][i], data_in["strength"][i])
     return out_list
