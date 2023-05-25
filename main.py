@@ -60,12 +60,12 @@ def save_displacements_to_file(filename: str, nodes: list[Point], u: np.ndarray,
 
 if __name__ == '__main__':
     #   Load bare data from files
-    node_list = load_points_from_file("iter2/sample.pts")
-    material_list = load_materials_from_file("iter2/sample.mat")
-    profile_list = load_profiles_from_file("iter2/sample.pro")
-    connection_list = load_connections_from_file("iter2/sample.con")
-    natural_bc_list = load_natural_bcs("iter2/sample.nat", node_list)
-    numerical_bc_list = load_numerical_bcs("iter2/sample.num", node_list)
+    node_list = load_points_from_file("lu/sample.pts")
+    material_list = load_materials_from_file("lu/sample.mat")
+    profile_list = load_profiles_from_file("lu/sample.pro")
+    connection_list = load_connections_from_file("lu/sample.con")
+    natural_bc_list = load_natural_bcs("lu/sample.nat", node_list)
+    numerical_bc_list = load_numerical_bcs("lu/sample.num", node_list)
 
     #   Assemble elements from nodes, materials, profiles, and connections
     elements = elements_assemble(connection_list, material_list, profile_list, node_list)
@@ -91,7 +91,7 @@ if __name__ == '__main__':
         dx = n2.x - n1.x
         dy = n2.y - n1.y
         dz = n2.z - n1.z
-        d = np.array((((dx,), (dy,), (dz,)),))
+        d = np.array(((dx,), (dy,), (dz,)))
         L = np.linalg.norm(d)
         T_one = compute_global_to_local_transform(dx, dy, dz)
         assert np.all(np.isclose(np.array(((1,), (0,), (0,))), T_one @ (d/L)))
@@ -111,9 +111,13 @@ if __name__ == '__main__':
         K_g[np.ix_(indices, indices)] += K_e
         mass = m.rho * A * L
         #   Add gravitational force
-        f_g[3 * e.node1 + 2] += -0.5 * m.rho * A * L * 9.81
-        f_g[3 * e.node2 + 2] += -0.5 * m.rho * A * L * 9.81
-        # M_g[indices, indices] += mass/2
+        # f_g[3 * e.node1 + 2] += -0.5 * m.rho * A * L * 9.81
+        # f_g[3 * e.node2 + 2] += -0.5 * m.rho * A * L * 9.81
+        #   Add temperature
+        # F_thermal = np.abs(n1.t - n2.t) * E * A * m.alpha / (2 * L)
+        # f_g[3 * e.node2: 3 * e.node2 + 3] += d * F_thermal
+        # f_g[3 * e.node1: 3 * e.node1 + 3] += -d * F_thermal
+        M_g[indices, indices] += mass/2
         M_e = mass / 6 * np.array(
             [[2, 0, 0, 1, 0, 0],
              [0, 2, 0, 0, 1, 0],
@@ -191,7 +195,9 @@ if __name__ == '__main__':
         if F_e > 0:
             F_lim = A * m.sigma_y
         else:
-            F_lim = -(np.pi / (L * 1)) ** 2 * m.E * np.pi * (p.r ** 4 - (p.r - p.t) ** 4) / 4
+            F_lim = -(np.pi / (L * 2)) ** 2 * m.E * np.pi * (p.r ** 4 - (p.r - p.t) ** 4) / 4
+            if np.abs(F_lim) > A * m.sigma_y:
+                F_lim = -A * m.sigma_y
         print(f"Force {connection_list[i].label} is {F_e}, limit is {F_lim}")
         print(f"Stress {connection_list[i].label} is, {F_e / A}, which is {np.abs(F_e / F_lim) * 100} % of allowed\n")
         force_array[i] /= A
@@ -202,7 +208,7 @@ if __name__ == '__main__':
     print("Vibrational modes of the structure in Hz:", *freq)
     print("Max tensile stress:", force_array.max()/1e6, "MPa")
     fig = show_structure(node_list, elements, numerical_bc_list, natural_bc_list)
-    show_deformed(fig.get_axes()[0], 100 * u_g, node_list, elements, line_style="dashed", rod_color="red")
+    show_deformed(fig.get_axes()[0], 10 * u_g, node_list, elements, line_style="dashed", rod_color="red")
     fig.suptitle("Deformed Structure")
     plt.show()
 

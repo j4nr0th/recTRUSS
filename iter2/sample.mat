@@ -1,3 +1,3 @@
-material label,elastic modulus,density,strength
-steel,248E9,7.85E3,400E6
-aluminium,70E6,2.7E3,276
+material label,elastic modulus,density,strength,alpha
+steel,248E9,7.85E3,400E6,0.006
+aluminium,70E6,2.7E3,276,0.002

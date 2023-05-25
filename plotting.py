@@ -66,44 +66,46 @@ def show_structure(pts: list[Point], elements: list[Element], num: list[Boundary
     #   draw the points
     ax.scatter(x_list, y_list, zs=z_list, color=colors)
 
-    max_len = 0
+    max_len: float = 0
     #   now process the elements
     for i, e in enumerate(elements):
         n1 = pts[e.node1]
         n2 = pts[e.node2]
         length = np.hypot(np.hypot(n1.x - n2.x, n1.y - n2.y), n1.z - n2.z)
         if length > max_len:
-            max_len = length
+            max_len = float(length)
         ax.plot(xs=[n1.x, n2.x], ys=[n1.y, n2.y], zs=[n1.z, n2.z], color=rod_color, linestyle=line_style)
 
     n_nat_bc = len(nat)
-    lengths = np.zeros(n_nat_bc)
-    directions = np.zeros((n_nat_bc, 3))
-    x_list = np.zeros(n_nat_bc)
-    y_list = np.zeros(n_nat_bc)
-    z_list = np.zeros(n_nat_bc)
-    for i, bc in enumerate(nat):
-        # find the direction of the force and its magnitude
-        F = np.array([bc.x, bc.y, bc.z])
-        m = np.linalg.norm(F)
-        lengths[i] = m
-        directions[i, :] = F / m
-        n = pts[bc.node]
-        x_list[i] = n.x;
-        y_list[i] = n.y;
-        z_list[i] = n.z;
+    if n_nat_bc > 0:
+        lengths = np.zeros(n_nat_bc)
+        directions = np.zeros((n_nat_bc, 3))
+        x_list = np.zeros(n_nat_bc)
+        y_list = np.zeros(n_nat_bc)
+        z_list = np.zeros(n_nat_bc)
+        for i, bc in enumerate(nat):
+            # find the direction of the force and its magnitude
+            F = np.array([bc.x, bc.y, bc.z])
+            m = np.linalg.norm(F)
+            lengths[i] = m
+            directions[i, :] = F / m
+            n = pts[bc.node]
+            x_list[i] = n.x;
+            y_list[i] = n.y;
+            z_list[i] = n.z;
 
-    lengths *= f_len / np.max(lengths)
-    # for i, bc, in enumerate(nat):
-    #    n = pts[bc.node]
-    #    v = lengths[i] * directions[i]
-    #    arrow = Arrow3D(n.x, n.y, n.z, v[0], v[1], v[2])
-    #    ax.add_artist(arrow)
-    directions[:, 0] *= lengths.flatten()
-    directions[:, 1] *= lengths.flatten()
-    directions[:, 2] *= lengths.flatten()
-    ax.quiver(x_list, y_list, z_list, directions[:, 0], directions[:, 1], directions[:, 2])
+        lengths *= f_len / np.max(lengths) * max_len
+        # for i, bc, in enumerate(nat):
+        #    n = pts[bc.node]
+        #    v = lengths[i] * directions[i]
+        #    arrow = Arrow3D(n.x, n.y, n.z, v[0], v[1], v[2])
+        #    ax.add_artist(arrow)
+        directions[:, 0] *= lengths.flatten()
+        directions[:, 1] *= lengths.flatten()
+        directions[:, 2] *= lengths.flatten()
+        ax.quiver(x_list, y_list, z_list, directions[:, 0], directions[:, 1], directions[:, 2])
 
+    ax.set_aspect("equal")
     return fig
 
 
@@ -133,6 +135,7 @@ def show_deformed(ax: plt.Axes, u: np.ndarray, pts: list[Point], elements: list[
         if length > max_len:
             max_len = length
         ax.plot(xs=[x1, x2], ys=[y1, y2], zs=[z1, z2], color=rod_color, linestyle=line_style)
+    ax.set_aspect("equal")
 
 
 def show_forces(pts: list[Point], elements: list[Element], forces: np.ndarray, **kwargs) -> plt.Figure:
@@ -152,7 +155,7 @@ def show_forces(pts: list[Point], elements: list[Element], forces: np.ndarray, *
 
     colormap: matplotlib.colors.Colormap = cm.get_cmap(colormap_name)
     max_F_mag = np.max(np.abs(forces))
-    map = plt.cm.ScalarMappable(plt.Normalize(-max_F_mag, max_F_mag), colormap)
+    color_scalar_map = plt.cm.ScalarMappable(plt.Normalize(-max_F_mag, max_F_mag), colormap)
     x_list = np.zeros(len(pts))
     y_list = np.zeros(len(pts))
     z_list = np.zeros(len(pts))
@@ -169,10 +172,11 @@ def show_forces(pts: list[Point], elements: list[Element], forces: np.ndarray, *
     for i, e in enumerate(elements):
         n1 = pts[e.node1]
         n2 = pts[e.node2]
-        color = map.to_rgba(forces[i])
+        color = color_scalar_map.to_rgba(forces[i])
         line = ax.plot(xs=[n1.x, n2.x], ys=[n1.y, n2.y], zs=[n1.z, n2.z], color=color, linestyle=line_style)
         lines.append(*line)
 
-    plt.colorbar(map)
+    plt.colorbar(color_scalar_map)
+    ax.set_aspect("equal")
 
     return fig

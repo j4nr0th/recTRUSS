@@ -34,7 +34,7 @@ def elements_assemble(connections: list[Connection], materials: list[Material], 
 
         pro = [x for x in filter(lambda p: p.label == c.profile, profiles)]
         assert len(pro) == 1;
-        i_pro = profiles.index(profiles[0])
+        i_pro = profiles.index(pro[0])
 
         e = Element(i_p1, i_p2, i_mat, i_pro)
         element_list[i] = e;
