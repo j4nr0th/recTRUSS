@@ -147,7 +147,7 @@ if __name__ == '__main__':
 
     node_list = load_points_from_file(cell_file_name + ".pts")
     material_list = load_materials_from_file("full_structure/sample.mat")
-    profile_list = load_profiles_from_file("full_structure/sample.pro")
+    profile_list = load_profiles_from_file(full_structure_name + ".pro")
     connection_list = load_connections_from_file(cell_file_name + ".con")
     natural_bc_list = load_natural_bcs(cell_file_name + ".nat", node_list)
     elements = elements_assemble(connection_list, material_list, profile_list, node_list)

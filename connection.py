@@ -10,6 +10,9 @@ class Connection:
     material: str;
     profile: str
 
+    def __eq__(self,other):
+        return self.label == other.label and self.node1 == other.node1 and self.node2 == other.node2 and self.material == other.material and self.profile == other.profile
+
 
 def load_connections_from_file(filename: str) -> list[Connection]:
     out_list: list
