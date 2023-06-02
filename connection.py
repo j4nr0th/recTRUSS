@@ -20,3 +20,10 @@ def load_connections_from_file(filename: str) -> list[Connection]:
         out_list[i] = Connection(str(data_in["connection label"][i]), str(data_in["point label 1"][i]),
                                  str(data_in["point label 2"][i]), str(data_in["material label"][i]), str(data_in["profile label"][i]))
     return out_list
+
+
+def write_connections_to_file(filename: str, connections: list[Connection]):
+    with open(filename, 'w') as f:
+        f.write('connection label,material label,profile label,point label 1,point label 2\n')
+        for con in connections:
+            f.write(','.join([con.label, con.material, con.profile, con.node1, con.node2])+'\n')
