@@ -111,7 +111,31 @@ def generate_numeric_bcs(filename_cell: str, nodes: list[Point], supported_verti
 
 if __name__ == '__main__':
 
-    # Number of requested layers and columns of cells
+    """
+    NAMING SCHEME CELL:
+    Every point must be named XYYZZ, where X is any character indicating the unique point in the cell, 
+    YY is a number indicating the column number of any duplicate point, 
+    and ZZ is a number indicating the row number of any duplicate point. 
+    
+    Any point between two cells (both left-right and bottom-top) should have the same X character as name.
+    So if you have a single cube, the bottom square would be (top view):
+    
+    A0000 ---- A0100
+     |           |
+     |           |
+    B0000 ---- B0100
+    
+    The front square would then be (front view):
+    B0001 ---- B0101
+     |           |
+     |           |
+    B0000 ---- B0100
+    
+    If you dont adhere to this the script will shit itself.
+    
+    """
+
+    # Number of requested layers and columns (of half the structure width) of cells
     layers = 6
     columns = 3
 
