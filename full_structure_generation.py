@@ -133,7 +133,8 @@ def add_rotor_mass(filename_full: str, total_rotor_mass):
     bcs.to_csv(filename_full + '.nat')
 
 
-if __name__ == '__main__':
+def generate_structure(cell_filename: str, rows, cols, total_gen_mass,
+                       total_rotor_mass, constrained_points=('A0000', 'B0000')):
 
     """
     NAMING SCHEME CELL:
@@ -160,28 +161,24 @@ if __name__ == '__main__':
     """
 
     # Number of requested layers and columns (of half the structure width) of cells
-    layers = 6
-    columns = 3
-    total_generator_mass = 10E3 * 12
-    total_rotor_mass = 300E3/9.81
-    # Labels of the points which should be fully constrained
-    constrained_points = ['A0000', 'B0000', 'A0001', 'B0001']
+    layers = rows
+    columns = cols
 
-    cell_file_name = 'full_structure3/structure1'
-    full_structure_name = cell_file_name + '_fullstruct'
 
-    node_list = load_points_from_file(cell_file_name + ".pts")
+    full_structure_name = cell_filename + '_fullstruct'
+
+    node_list = load_points_from_file(cell_filename + ".pts")
     material_list = load_materials_from_file("full_structure3/sample.mat")
     profile_list = load_profiles_from_file(full_structure_name + ".pro")
-    connection_list = load_connections_from_file(cell_file_name + ".con")
-    natural_bc_list = load_natural_bcs(cell_file_name + ".nat", node_list)
+    connection_list = load_connections_from_file(cell_filename + ".con")
+    natural_bc_list = load_natural_bcs(cell_filename + ".nat", node_list)
     elements = elements_assemble(connection_list, material_list, profile_list, node_list)
 
     newnodes, newconnections = copy_nodes(node_list, connection_list, layers=layers, columns=columns)
     newelements = elements_assemble(newconnections, material_list, profile_list, newnodes)
-    extend_natural_bcs(cell_file_name + ".nat", newnodes)
-    add_generator_load(full_structure_name,total_generator_mass)
+    extend_natural_bcs(cell_filename + ".nat", newnodes)
+    add_generator_load(full_structure_name, total_gen_mass)
     add_rotor_mass(full_structure_name, total_rotor_mass)
-    generate_numeric_bcs(cell_file_name + ".num", newnodes, constrained_points)
+    generate_numeric_bcs(cell_filename + ".num", newnodes, constrained_points)
     write_points_to_file(full_structure_name + ".pts", newnodes)
     write_connections_to_file(full_structure_name + ".con", newconnections)

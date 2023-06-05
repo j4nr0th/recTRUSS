@@ -8,6 +8,7 @@ from profile import Profile, load_profiles_from_file
 from connection import Connection, load_connections_from_file, write_connections_to_file
 from bcs import BoundaryCondition, load_natural_bcs, load_numerical_bcs
 from generate_profiles import smaller_profile, larger_profile
+from full_structure_generation import generate_structure
 import copy
 import numpy as np
 
@@ -59,15 +60,18 @@ def save_displacements_to_file(filename: str, nodes: list["Point"], u: np.ndarra
             f_out.write(f"{pt.label},{u[3*i+0]},{u[3*i+1]},{u[3*i+2]},{r[3*i+0]},{r[3*i+1]},{r[3*i+2]}\n")
 
 
-if __name__ == '__main__':
+def main(file_loc, optimizing=True):
     plotting = True
     printing = True
+    if optimizing:
+        plotting = False
+        printing = False
 
     abs_plotting = True
     #   Load bare data from files
-    file_loc = "full_structure3/structure1_fullstruct"
+
     node_list = load_points_from_file(file_loc + ".pts")
-    material_list = load_materials_from_file("full_structure3/sample.mat")
+    material_list = load_materials_from_file(file_loc.split('/')[0]+'/sample.mat')
 
     profile_loc = file_loc + ".pro"
     connection_loc = file_loc + ".con"
@@ -251,6 +255,22 @@ if __name__ == '__main__':
             fig = show_forces(node_list, elements, force_array/1e6, abs_plot=abs_plotting)
             fig.suptitle("Structural stresses")
             plt.show()
+
+
+if __name__=='__main__':
+    cell_file_name = '6_ruined_airflow/structure1'
+    file_loc = cell_file_name +"_fullstruct"
+    total_generator_mass = 10E3 * 12
+    total_rotor_mass = 300E3/9.81
+
+    optimizing = False
+
+    if optimizing:
+        generate_structure(cell_file_name, 6, 3, total_generator_mass, total_rotor_mass)
+
+    main(file_loc, optimizing=optimizing)
+
+
 
 
 
