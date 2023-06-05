@@ -82,6 +82,8 @@ def main(file_loc, optimizing=True):
 
     running = True
     while running:
+        if not optimizing:
+            running = False
         connection_list = load_connections_from_file(connection_loc)
         old_connection_list = copy.deepcopy(connection_list)
         #   Assemble elements from nodes, materials, profiles, and connections
@@ -268,10 +270,11 @@ def main(file_loc, optimizing=True):
 
 
 if __name__ == '__main__':
-    cell_file_name = '1_hecking_chonker/structure1'
+    cell_file_name = '5_Janis_min_effort_design/structure1'
     file_loc = cell_file_name + "_fullstruct"
 
-    cell_rows, cell_columns = 6, 2
+    cell_rows, cell_columns = 6, 4
+    # ACTUAL MASS IS 13E3 PER DRIVE TRAIN
     total_generator_mass = 10E3 * 12 * cell_columns / 3
     total_rotor_mass = 300E3 / 9.81 * cell_columns / 3
 
