@@ -138,7 +138,7 @@ def show_deformed(ax: plt.Axes, u: np.ndarray, pts: list[Point], elements: list[
     ax.set_aspect("equal")
 
 
-def show_forces(pts: list[Point], elements: list[Element], forces: np.ndarray, **kwargs) -> plt.Figure:
+def show_forces(pts: list[Point], elements: list[Element], force_arr: np.ndarray, abs_plot=False, **kwargs) -> plt.Figure:
     #   Set colors and sizes
     line_style = None
     if "line_style" in kwargs:
@@ -152,10 +152,17 @@ def show_forces(pts: list[Point], elements: list[Element], forces: np.ndarray, *
 
     fig: plt.Figure = plt.figure()
     ax: plt.Axes = fig.add_subplot(111, projection="3d")
+    if abs_plot:
+        forces = np.abs(force_arr)
+    else:
+        forces = force_arr.copy()
 
     colormap: matplotlib.colors.Colormap = cm.get_cmap(colormap_name)
     max_F_mag = np.max(np.abs(forces))
-    color_scalar_map = plt.cm.ScalarMappable(plt.Normalize(-max_F_mag, max_F_mag), colormap)
+    if abs_plot:
+        color_scalar_map = plt.cm.ScalarMappable(plt.Normalize(0, max_F_mag), colormap)
+    else:
+        color_scalar_map = plt.cm.ScalarMappable(plt.Normalize(-max_F_mag, max_F_mag), colormap)
     x_list = np.zeros(len(pts))
     y_list = np.zeros(len(pts))
     z_list = np.zeros(len(pts))
