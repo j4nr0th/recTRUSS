@@ -113,13 +113,23 @@ def add_generator_load(filename_full: str, generator_mass):
     floor_points = [point for point in pd.read_csv(filename_full + ".pts", index_col=0).index if point[-1] == '0']
     gen_load = generator_mass * 9.81 / len(floor_points)
     bcs = pd.read_csv(filename_full + '.nat', index_col=0)
-    print(floor_points)
     for point in floor_points:
         if point in bcs.index:
             bcs.loc[point]['Fz'] -= gen_load
         else:
             bcs.loc[point] = [0,0,-gen_load]
-    print(bcs)
+    bcs.to_csv(filename_full + '.nat')
+
+
+def add_rotor_mass(filename_full: str, total_rotor_mass):
+    non_floor_nodes = [point for point in pd.read_csv(filename_full + ".pts", index_col=0).index if point[-1] != '0']
+    rotor_load = 9.81 * total_rotor_mass / len(non_floor_nodes)
+    bcs = pd.read_csv(filename_full + '.nat', index_col=0)
+    for point in non_floor_nodes:
+        if point in bcs.index:
+            bcs.loc[point]['Fz'] -= rotor_load
+        else:
+            bcs.loc[point] = [0, 0, -rotor_load]
     bcs.to_csv(filename_full + '.nat')
 
 
@@ -152,9 +162,10 @@ if __name__ == '__main__':
     # Number of requested layers and columns (of half the structure width) of cells
     layers = 6
     columns = 3
-
+    total_generator_mass = 10E3 * 12
+    total_rotor_mass = 300E3/9.81
     # Labels of the points which should be fully constrained
-    constrained_points = ['A0000', 'B0000']
+    constrained_points = ['A0000', 'B0000', 'A0001', 'B0001']
 
     cell_file_name = 'full_structure3/structure1'
     full_structure_name = cell_file_name + '_fullstruct'
@@ -169,7 +180,8 @@ if __name__ == '__main__':
     newnodes, newconnections = copy_nodes(node_list, connection_list, layers=layers, columns=columns)
     newelements = elements_assemble(newconnections, material_list, profile_list, newnodes)
     extend_natural_bcs(cell_file_name + ".nat", newnodes)
-    add_generator_load(full_structure_name, 10E3 * 12)
+    add_generator_load(full_structure_name,total_generator_mass)
+    add_rotor_mass(full_structure_name, total_rotor_mass)
     generate_numeric_bcs(cell_file_name + ".num", newnodes, constrained_points)
     write_points_to_file(full_structure_name + ".pts", newnodes)
     write_connections_to_file(full_structure_name + ".con", newconnections)

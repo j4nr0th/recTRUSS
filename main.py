@@ -65,20 +65,15 @@ if __name__ == '__main__':
 
     abs_plotting = True
     #   Load bare data from files
-    node_list = load_points_from_file("full_structure3/structure1_fullstruct.pts")
+    file_loc = "full_structure3/structure1_fullstruct"
+    node_list = load_points_from_file(file_loc + ".pts")
     material_list = load_materials_from_file("full_structure3/sample.mat")
-    profile_list = load_profiles_from_file("full_structure3/structure1_fullstruct.pro")
-    connection_loc = "full_structure3/structure1_fullstruct.con"
 
-    natural_bc_list = load_natural_bcs("full_structure3/structure1_fullstruct.nat", node_list)
-    numerical_bc_list = load_numerical_bcs("full_structure3/structure1_fullstruct.num", node_list)
-
-    # node_list = load_points_from_file("iter2/sample.pts")
-    # material_list = load_materials_from_file("iter2/sample.mat")
-    # profile_list = load_profiles_from_file("iter2/sample.pro")
-    # connection_list = load_connections_from_file("iter2/sample.con")
-    # natural_bc_list = load_natural_bcs("iter2/sample.nat", node_list)
-    # numerical_bc_list = load_numerical_bcs("iter2/sample.num", node_list)
+    profile_loc = file_loc + ".pro"
+    connection_loc = file_loc + ".con"
+    profile_list = load_profiles_from_file(profile_loc)
+    natural_bc_list = load_natural_bcs(file_loc + ".nat", node_list)
+    numerical_bc_list = load_numerical_bcs(file_loc + ".num", node_list)
 
     running = True
     while running:
@@ -136,7 +131,7 @@ if __name__ == '__main__':
             # f_g[3 * e.node2: 3 * e.node2 + 3] += d * F_thermal
             # f_g[3 * e.node1: 3 * e.node1 + 3] += -d * F_thermal
 
-            M_g[indices, indices] += mass/2                    # TODO: THIS BE WRONG PROB
+            M_g[indices, indices] += mass/2
             # M_e = mass / 6 * np.array(
             #     [[2, 0, 0, 1, 0, 0],
             #      [0, 2, 0, 0, 1, 0],
@@ -227,13 +222,11 @@ if __name__ == '__main__':
                 print(f"Force {connection_list[i].label} is {F_e}, limit is {F_lim}")
                 print(f"Stress {connection_list[i].label} is, {F_e / A}, which is {np.abs(F_e / F_lim) * 100} % of allowed\n")
 
-            # if abs(F_e / F_lim) < 0.25:
-            #     # move to smaller profile
-            #     connection_list[i].profile = smaller_profile(connection_list[i].profile)
-            #     print(f'changed {old_connection_list[i].profile} to {connection_list[i].profile}')
-
             if abs(F_e / F_lim) > 1:
-                connection_list[i].profile = larger_profile(connection_list[i].profile)
+                connection_list[i].profile = larger_profile(connection_list[i].profile, profile_loc)
+                print(f'changed {old_connection_list[i].profile} to {connection_list[i].profile}')
+            if abs(F_e / F_lim) < 0.5:
+                connection_list[i].profile = smaller_profile(connection_list[i].profile, profile_loc)
                 print(f'changed {old_connection_list[i].profile} to {connection_list[i].profile}')
 
             force_array[i] /= A
@@ -260,9 +253,10 @@ if __name__ == '__main__':
             plt.show()
 
 
-# Ct 0.05 53m/s
+
 # Ct 0.05 70m/s
-# Ct ...  15
+# Ct worst case 0.014
+
 # safety factor 1.3 and SF for mat of 1.3
 #  buckling SF 1.2
 
@@ -270,4 +264,4 @@ if __name__ == '__main__':
 # NEW LOADS
 # COMPILE RESULTS
 # USE EXISTING TUBE SIZES
-# ROTOR MASS
+
