@@ -249,6 +249,9 @@ def main(file_loc, optimizing=True):
             print("Max x displacement:", np.max(np.abs(u_g[0::3])), '\n',
                   "Max y displacement:", np.max(np.abs(u_g[1::3])), '\n',
                   "Max z displacement:", np.max(np.abs(u_g[2::3])))
+
+            print("Structural mass is:", np.sum(M_g) / 3)
+
         if plotting:
             fig = show_structure(node_list, elements, numerical_bc_list, natural_bc_list)
             show_deformed(fig.get_axes()[0], 100*u_g, node_list, elements, line_style="dashed", rod_color="red")
@@ -261,10 +264,10 @@ def main(file_loc, optimizing=True):
 
 
 if __name__=='__main__':
-    cell_file_name = '4_the_mega_Jemiol_design/structure1'
+    cell_file_name = '2_not_j/structure1'
     file_loc = cell_file_name +"_fullstruct"
 
-    cell_rows, cell_columns = 6, 2
+    cell_rows, cell_columns = 6, 4
     total_generator_mass = 10E3 * 12 * cell_columns / 3
     total_rotor_mass = 300E3/9.81 * cell_columns / 3
 
