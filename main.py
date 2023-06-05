@@ -246,9 +246,12 @@ def main(file_loc, optimizing=True):
         if printing:
             print("Vibrational modes of the structure in Hz:", *freq)
             print("Max tensile stress:", force_array.max()/1e6, "MPa")
+            print("Max x displacement:", np.max(np.abs(u_g[0::3])), '\n',
+                  "Max y displacement:", np.max(np.abs(u_g[1::3])), '\n',
+                  "Max z displacement:", np.max(np.abs(u_g[2::3])))
         if plotting:
             fig = show_structure(node_list, elements, numerical_bc_list, natural_bc_list)
-            show_deformed(fig.get_axes()[0], 100 * u_g, node_list, elements, line_style="dashed", rod_color="red")
+            show_deformed(fig.get_axes()[0], 100*u_g, node_list, elements, line_style="dashed", rod_color="red")
             fig.suptitle("Deformed Structure")
             plt.show()
 
@@ -258,7 +261,7 @@ def main(file_loc, optimizing=True):
 
 
 if __name__=='__main__':
-    cell_file_name = '6_ruined_airflow/structure1'
+    cell_file_name = '4_the_mega_Jemiol_design/structure1'
     file_loc = cell_file_name +"_fullstruct"
     total_generator_mass = 10E3 * 12
     total_rotor_mass = 300E3/9.81
@@ -266,22 +269,6 @@ if __name__=='__main__':
     optimizing = False
 
     if optimizing:
-        generate_structure(cell_file_name, 6, 3, total_generator_mass, total_rotor_mass)
+        generate_structure(cell_file_name, rows=6, cols=3, total_gen_mass=total_generator_mass, total_rotor_mass=total_rotor_mass)
 
     main(file_loc, optimizing=optimizing)
-
-
-
-
-
-# Ct 0.05 70m/s
-# Ct worst case 0.014
-
-# safety factor 1.3 and SF for mat of 1.3
-#  buckling SF 1.2
-
-# CHECK OTHER STRUCTURE
-# NEW LOADS
-# COMPILE RESULTS
-# USE EXISTING TUBE SIZES
-
