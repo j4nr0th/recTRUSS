@@ -8,7 +8,7 @@ from profile import Profile, load_profiles_from_file
 from connection import Connection, load_connections_from_file, write_connections_to_file
 from bcs import BoundaryCondition, load_natural_bcs, load_numerical_bcs
 from generate_profiles import smaller_profile, larger_profile
-
+import copy
 import numpy as np
 
 
@@ -60,15 +60,16 @@ def save_displacements_to_file(filename: str, nodes: list["Point"], u: np.ndarra
 
 
 if __name__ == '__main__':
-    plotting = False
+    plotting = True
+    printing = True
     #   Load bare data from files
-    node_list = load_points_from_file("full_structure/structure1_fullstruct.pts")
-    material_list = load_materials_from_file("full_structure/sample.mat")
-    profile_list = load_profiles_from_file("full_structure/structure1_fullstruct.pro")
-    connection_loc = "full_structure/structure1_fullstruct.con"
+    node_list = load_points_from_file("full_structure3/structure1_fullstruct.pts")
+    material_list = load_materials_from_file("full_structure3/sample.mat")
+    profile_list = load_profiles_from_file("full_structure3/structure1_fullstruct.pro")
+    connection_loc = "full_structure3/structure1_fullstruct.con"
 
-    natural_bc_list = load_natural_bcs("full_structure/structure1_fullstruct.nat", node_list)
-    numerical_bc_list = load_numerical_bcs("full_structure/structure1_fullstruct.num", node_list)
+    natural_bc_list = load_natural_bcs("full_structure3/structure1_fullstruct.nat", node_list)
+    numerical_bc_list = load_numerical_bcs("full_structure3/structure1_fullstruct.num", node_list)
 
     # node_list = load_points_from_file("iter2/sample.pts")
     # material_list = load_materials_from_file("iter2/sample.mat")
@@ -80,7 +81,7 @@ if __name__ == '__main__':
     running = True
     while running:
         connection_list = load_connections_from_file(connection_loc)
-
+        old_connection_list = copy.deepcopy(connection_list)
         #   Assemble elements from nodes, materials, profiles, and connections
         elements = elements_assemble(connection_list, material_list, profile_list, node_list)
         n = len(node_list)
@@ -90,7 +91,6 @@ if __name__ == '__main__':
             fig = show_structure(node_list, elements, numerical_bc_list, natural_bc_list)
             fig.suptitle("Problem setup")
             plt.show()
-
 
         #   Now assemble the global system
         K_g = np.zeros((n_dof, n_dof))
@@ -179,7 +179,8 @@ if __name__ == '__main__':
         u_g[free_dofs] = u_r
         r_g = K_g @ u_g - f_g
         eigenvalues = np.linalg.eigvals(K_r_inv @ M_r)
-        print("Structural mass is:", np.sum(M_g))
+        if printing:
+            print("Structural mass is:", np.sum(M_g))
 
         #   Postprocessing
         for i, n in enumerate(node_list):
@@ -191,10 +192,11 @@ if __name__ == '__main__':
             Fx = F[0]
             Fy = F[1]
             Fz = F[2]
-            print(f"Node \"{n.label}\" moved from ({n.x}, {n.y}, {n.z}) to ({n.x + ux}, {n.y + uy}, {n.z + uz}). Reaction"
-                  f" force it feels is {np.hypot(np.hypot(Fx, Fy), Fz)} ({Fx}, {Fy}, {Fz})")
+            if printing:
+                print(f"Node \"{n.label}\" moved from ({n.x}, {n.y}, {n.z}) to ({n.x + ux}, {n.y + uy}, {n.z + uz}). Reaction"
+                      f" force it feels is {np.hypot(np.hypot(Fx, Fy), Fz)} ({Fx}, {Fy}, {Fz})")
         force_array = np.zeros_like(elements, dtype=np.float64)
-        old_connection_list = connection_list.copy()
+
         for i, e in enumerate(elements):
             n1 = node_list[e.node1]
             n2 = node_list[e.node2]
@@ -215,30 +217,32 @@ if __name__ == '__main__':
                 F_lim = -(np.pi / (L * 2)) ** 2 * m.E * np.pi * (p.r ** 4 - (p.r - p.t) ** 4) / 4
                 if np.abs(F_lim) > A * m.sigma_y:
                     F_lim = -A * m.sigma_y
-            print(f"Force {connection_list[i].label} is {F_e}, limit is {F_lim}")
-            print(f"Stress {connection_list[i].label} is, {F_e / A}, which is {np.abs(F_e / F_lim) * 100} % of allowed\n")
+            if printing:
+                print(f"Force {connection_list[i].label} is {F_e}, limit is {F_lim}")
+                print(f"Stress {connection_list[i].label} is, {F_e / A}, which is {np.abs(F_e / F_lim) * 100} % of allowed\n")
 
-            if abs(F_e / F_lim) < 0.5:
-                # move to smaller profile
-                connection_list[i].profile = smaller_profile(connection_list[i].profile)
-                running = True
+            # if abs(F_e / F_lim) < 0.25:
+            #     # move to smaller profile
+            #     connection_list[i].profile = smaller_profile(connection_list[i].profile)
+            #     print(f'changed {old_connection_list[i].profile} to {connection_list[i].profile}')
 
-            if abs(F_e / F_lim) > 0.95:
+            if abs(F_e / F_lim) > 0.5:
                 connection_list[i].profile = larger_profile(connection_list[i].profile)
-                running = True
+                print(f'changed {old_connection_list[i].profile} to {connection_list[i].profile}')
 
             force_array[i] /= A
 
         if old_connection_list == connection_list:
-
+            print("NO FUCKING WAY I CAN'T BELIEVE ITS ACTUALLY DONE")
             running = False
+
         write_connections_to_file(connection_loc, connection_list)
 
         freq = np.real_if_close(np.sqrt(1 / eigenvalues), tol=10000) / (2 * np.pi)
         save_displacements_to_file("sample.dis", node_list, u_g, r_g)
-
-        print("Vibrational modes of the structure in Hz:", *freq)
-        print("Max tensile stress:", force_array.max()/1e6, "MPa")
+        if printing:
+            print("Vibrational modes of the structure in Hz:", *freq)
+            print("Max tensile stress:", force_array.max()/1e6, "MPa")
         if plotting:
             fig = show_structure(node_list, elements, numerical_bc_list, natural_bc_list)
             show_deformed(fig.get_axes()[0], 100 * u_g, node_list, elements, line_style="dashed", rod_color="red")

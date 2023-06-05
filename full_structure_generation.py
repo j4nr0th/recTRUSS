@@ -109,6 +109,20 @@ def generate_numeric_bcs(filename_cell: str, nodes: list[Point], supported_verti
     bcs.to_csv(filename_full_struct)
 
 
+def add_generator_load(filename_full: str, generator_mass):
+    floor_points = [point for point in pd.read_csv(filename_full + ".pts", index_col=0).index if point[-1] == '0']
+    gen_load = generator_mass * 9.81 / len(floor_points)
+    bcs = pd.read_csv(filename_full + '.nat', index_col=0)
+    print(floor_points)
+    for point in floor_points:
+        if point in bcs.index:
+            bcs.loc[point]['Fz'] -= gen_load
+        else:
+            bcs.loc[point] = [0,0,-gen_load]
+    print(bcs)
+    bcs.to_csv(filename_full + '.nat')
+
+
 if __name__ == '__main__':
 
     """
@@ -140,13 +154,13 @@ if __name__ == '__main__':
     columns = 3
 
     # Labels of the points which should be fully constrained
-    constrained_points = ['A0000', 'B0000', 'A0100', 'B0100']
+    constrained_points = ['A0000', 'B0000']
 
-    cell_file_name = 'full_structure/structure1'
+    cell_file_name = 'full_structure3/structure1'
     full_structure_name = cell_file_name + '_fullstruct'
 
     node_list = load_points_from_file(cell_file_name + ".pts")
-    material_list = load_materials_from_file("full_structure/sample.mat")
+    material_list = load_materials_from_file("full_structure3/sample.mat")
     profile_list = load_profiles_from_file(full_structure_name + ".pro")
     connection_list = load_connections_from_file(cell_file_name + ".con")
     natural_bc_list = load_natural_bcs(cell_file_name + ".nat", node_list)
@@ -155,6 +169,7 @@ if __name__ == '__main__':
     newnodes, newconnections = copy_nodes(node_list, connection_list, layers=layers, columns=columns)
     newelements = elements_assemble(newconnections, material_list, profile_list, newnodes)
     extend_natural_bcs(cell_file_name + ".nat", newnodes)
+    add_generator_load(full_structure_name, 10E3 * 12)
     generate_numeric_bcs(cell_file_name + ".num", newnodes, constrained_points)
     write_points_to_file(full_structure_name + ".pts", newnodes)
     write_connections_to_file(full_structure_name + ".con", newconnections)
