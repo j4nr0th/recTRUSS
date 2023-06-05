@@ -62,6 +62,8 @@ def save_displacements_to_file(filename: str, nodes: list["Point"], u: np.ndarra
 if __name__ == '__main__':
     plotting = True
     printing = True
+
+    abs_plotting = True
     #   Load bare data from files
     node_list = load_points_from_file("full_structure3/structure1_fullstruct.pts")
     material_list = load_materials_from_file("full_structure3/sample.mat")
@@ -133,15 +135,16 @@ if __name__ == '__main__':
             # F_thermal = np.abs(n1.t - n2.t) * E * A * m.alpha / (2 * L)
             # f_g[3 * e.node2: 3 * e.node2 + 3] += d * F_thermal
             # f_g[3 * e.node1: 3 * e.node1 + 3] += -d * F_thermal
-            M_g[indices, indices] += mass/2
-            M_e = mass / 6 * np.array(
-                [[2, 0, 0, 1, 0, 0],
-                 [0, 2, 0, 0, 1, 0],
-                 [0, 0, 2, 0, 0, 1],
-                 [1, 0, 0, 2, 0, 0],
-                 [0, 1, 0, 0, 2, 0],
-                 [0, 0, 1, 0, 0, 2]])
-            M_g[np.ix_(indices, indices)] += M_e
+
+            M_g[indices, indices] += mass/2                    # TODO: THIS BE WRONG PROB
+            # M_e = mass / 6 * np.array(
+            #     [[2, 0, 0, 1, 0, 0],
+            #      [0, 2, 0, 0, 1, 0],
+            #      [0, 0, 2, 0, 0, 1],
+            #      [1, 0, 0, 2, 0, 0],
+            #      [0, 1, 0, 0, 2, 0],
+            #      [0, 0, 1, 0, 0, 2]])
+            # M_g[np.ix_(indices, indices)] += M_e
 
         #   Apply numerical BCs
         for i, bc in enumerate(numerical_bc_list):
@@ -180,7 +183,7 @@ if __name__ == '__main__':
         r_g = K_g @ u_g - f_g
         eigenvalues = np.linalg.eigvals(K_r_inv @ M_r)
         if printing:
-            print("Structural mass is:", np.sum(M_g))
+            print("Structural mass is:", np.sum(M_g) / 3)
 
         #   Postprocessing
         for i, n in enumerate(node_list):
@@ -211,12 +214,15 @@ if __name__ == '__main__':
             K = m.E * A / L
             force_array[i] = F_e = K * np.dot((u2 - u1).flatten(), d)
             F_lim = 0
+            safety_factor_mat = 1.3
+            safety_factor_buck = 1.2
+            safety_factor_force = 1.3
             if F_e > 0:
-                F_lim = A * m.sigma_y
+                F_lim = A * m.sigma_y / (safety_factor_mat * safety_factor_force)
             else:
-                F_lim = -(np.pi / (L * 2)) ** 2 * m.E * np.pi * (p.r ** 4 - (p.r - p.t) ** 4) / 4
+                F_lim = (-(np.pi / (L * 2)) ** 2 * (m.E / safety_factor_mat) * np.pi * (p.r ** 4 - (p.r - p.t) ** 4) / 4) / safety_factor_buck
                 if np.abs(F_lim) > A * m.sigma_y:
-                    F_lim = -A * m.sigma_y
+                    F_lim = -A * m.sigma_y / (safety_factor_mat * safety_factor_force)
             if printing:
                 print(f"Force {connection_list[i].label} is {F_e}, limit is {F_lim}")
                 print(f"Stress {connection_list[i].label} is, {F_e / A}, which is {np.abs(F_e / F_lim) * 100} % of allowed\n")
@@ -226,7 +232,7 @@ if __name__ == '__main__':
             #     connection_list[i].profile = smaller_profile(connection_list[i].profile)
             #     print(f'changed {old_connection_list[i].profile} to {connection_list[i].profile}')
 
-            if abs(F_e / F_lim) > 0.5:
+            if abs(F_e / F_lim) > 1:
                 connection_list[i].profile = larger_profile(connection_list[i].profile)
                 print(f'changed {old_connection_list[i].profile} to {connection_list[i].profile}')
 
@@ -249,6 +255,19 @@ if __name__ == '__main__':
             fig.suptitle("Deformed Structure")
             plt.show()
 
-            fig = show_forces(node_list, elements, force_array/1e6)
+            fig = show_forces(node_list, elements, force_array/1e6, abs_plot=abs_plotting)
             fig.suptitle("Structural stresses")
             plt.show()
+
+
+# Ct 0.05 53m/s
+# Ct 0.05 70m/s
+# Ct ...  15
+# safety factor 1.3 and SF for mat of 1.3
+#  buckling SF 1.2
+
+# CHECK OTHER STRUCTURE
+# NEW LOADS
+# COMPILE RESULTS
+# USE EXISTING TUBE SIZES
+# ROTOR MASS
