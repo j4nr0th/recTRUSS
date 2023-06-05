@@ -263,12 +263,15 @@ def main(file_loc, optimizing=True):
 if __name__=='__main__':
     cell_file_name = '4_the_mega_Jemiol_design/structure1'
     file_loc = cell_file_name +"_fullstruct"
-    total_generator_mass = 10E3 * 12
-    total_rotor_mass = 300E3/9.81
+
+    cell_rows, cell_columns = 6, 4
+    total_generator_mass = 10E3 * 12 * cell_columns / 3
+    total_rotor_mass = 300E3/9.81 * cell_columns / 3
 
     optimizing = False
 
     if optimizing:
-        generate_structure(cell_file_name, rows=6, cols=3, total_gen_mass=total_generator_mass, total_rotor_mass=total_rotor_mass)
+        generate_structure(cell_file_name, rows=cell_rows, cols=cell_columns, total_gen_mass=total_generator_mass,
+                           total_rotor_mass=total_rotor_mass)
 
     main(file_loc, optimizing=optimizing)
