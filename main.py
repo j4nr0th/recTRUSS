@@ -17,7 +17,7 @@ def compute_global_to_local_transform(dx: float, dy: float, dz: float) -> np.nda
     alpha = np.arctan2(dy, dx);
     ca = np.cos(alpha);
     sa = np.sin(alpha);
-    beta = -(np.pi/2 - np.arctan2(np.hypot(dx, dy), dz));
+    beta = -(np.pi / 2 - np.arctan2(np.hypot(dx, dy), dz));
     cb = np.cos(beta);
     sb = np.sin(beta);
     T_z = np.array(
@@ -57,7 +57,8 @@ def save_displacements_to_file(filename: str, nodes: list["Point"], u: np.ndarra
     with open(filename, "w") as f_out:
         f_out.write(f"point label,ux,uy,uz,Rx,Ry,Rz\n")
         for i, pt in enumerate(nodes):
-            f_out.write(f"{pt.label},{u[3*i+0]},{u[3*i+1]},{u[3*i+2]},{r[3*i+0]},{r[3*i+1]},{r[3*i+2]}\n")
+            f_out.write(
+                f"{pt.label},{u[3 * i + 0]},{u[3 * i + 1]},{u[3 * i + 2]},{r[3 * i + 0]},{r[3 * i + 1]},{r[3 * i + 2]}\n")
 
 
 def main(file_loc, optimizing=True):
@@ -71,7 +72,7 @@ def main(file_loc, optimizing=True):
     #   Load bare data from files
 
     node_list = load_points_from_file(file_loc + ".pts")
-    material_list = load_materials_from_file(file_loc.split('/')[0]+'/sample.mat')
+    material_list = load_materials_from_file(file_loc.split('/')[0] + '/sample.mat')
 
     profile_loc = file_loc + ".pro"
     connection_loc = file_loc + ".con"
@@ -111,7 +112,7 @@ def main(file_loc, optimizing=True):
             d = np.array(((dx,), (dy,), (dz,)))
             L = np.linalg.norm(d)
             T_one = compute_global_to_local_transform(dx, dy, dz)
-            assert np.all(np.isclose(np.array(((1,), (0,), (0,))), T_one @ (d/L)))
+            assert np.all(np.isclose(np.array(((1,), (0,), (0,))), T_one @ (d / L)))
             assert np.isclose(np.linalg.det(T_one), 1)
             T = np.zeros((6, 6))
             T[0:3, 0:3] = T_one
@@ -135,7 +136,7 @@ def main(file_loc, optimizing=True):
             # f_g[3 * e.node2: 3 * e.node2 + 3] += d * F_thermal
             # f_g[3 * e.node1: 3 * e.node1 + 3] += -d * F_thermal
 
-            M_g[indices, indices] += mass/2
+            M_g[indices, indices] += mass / 2
             # M_e = mass / 6 * np.array(
             #     [[2, 0, 0, 1, 0, 0],
             #      [0, 2, 0, 0, 1, 0],
@@ -150,14 +151,14 @@ def main(file_loc, optimizing=True):
             pt_index = bc.node
             node = node_list[bc.node]
             if bc.x is not None:
-                free_dofs[3*pt_index + 0] = 0
-                u_g[3*pt_index + 0] = bc.x - node.x
+                free_dofs[3 * pt_index + 0] = 0
+                u_g[3 * pt_index + 0] = bc.x - node.x
             if bc.y is not None:
-                free_dofs[3*pt_index + 1] = 0
-                u_g[3*pt_index + 1] = bc.y - node.y
+                free_dofs[3 * pt_index + 1] = 0
+                u_g[3 * pt_index + 1] = bc.y - node.y
             if bc.z is not None:
-                free_dofs[3*pt_index + 2] = 0
-                u_g[3*pt_index + 2] = bc.z - node.z
+                free_dofs[3 * pt_index + 2] = 0
+                u_g[3 * pt_index + 2] = bc.z - node.z
 
         #   Apply natural BCs
         for i, bc in enumerate(natural_bc_list):
@@ -195,8 +196,9 @@ def main(file_loc, optimizing=True):
             Fy = F[1]
             Fz = F[2]
             if printing:
-                print(f"Node \"{n.label}\" moved from ({n.x}, {n.y}, {n.z}) to ({n.x + ux}, {n.y + uy}, {n.z + uz}). Reaction"
-                      f" force it feels is {np.hypot(np.hypot(Fx, Fy), Fz)} ({Fx}, {Fy}, {Fz})")
+                print(
+                    f"Node \"{n.label}\" moved from ({n.x}, {n.y}, {n.z}) to ({n.x + ux}, {n.y + uy}, {n.z + uz}). Reaction"
+                    f" force it feels is {np.hypot(np.hypot(Fx, Fy), Fz)} ({Fx}, {Fy}, {Fz})")
         force_array = np.zeros_like(elements, dtype=np.float64)
 
         for i, e in enumerate(elements):
@@ -219,12 +221,14 @@ def main(file_loc, optimizing=True):
             if F_e > 0:
                 F_lim = A * m.sigma_y / (safety_factor_mat * safety_factor_force)
             else:
-                F_lim = (-(np.pi / (L * 2)) ** 2 * (m.E / safety_factor_mat) * np.pi * (p.r ** 4 - (p.r - p.t) ** 4) / 4) / safety_factor_buck
+                F_lim = (-(np.pi / (L * 2)) ** 2 * (m.E / safety_factor_mat) * np.pi * (
+                            p.r ** 4 - (p.r - p.t) ** 4) / 4) / safety_factor_buck
                 if np.abs(F_lim) > A * m.sigma_y:
                     F_lim = -A * m.sigma_y / (safety_factor_mat * safety_factor_force)
             if printing:
                 print(f"Force {connection_list[i].label} is {F_e}, limit is {F_lim}")
-                print(f"Stress {connection_list[i].label} is, {F_e / A}, which is {np.abs(F_e / F_lim) * 100} % of allowed\n")
+                print(
+                    f"Stress {connection_list[i].label} is, {F_e / A}, which is {np.abs(F_e / F_lim) * 100} % of allowed\n")
 
             if abs(F_e / F_lim) > 1:
                 connection_list[i].profile = larger_profile(connection_list[i].profile, profile_loc)
@@ -245,7 +249,7 @@ def main(file_loc, optimizing=True):
         save_displacements_to_file("sample.dis", node_list, u_g, r_g)
         if printing:
             print("Vibrational modes of the structure in Hz:", *freq)
-            print("Max tensile stress:", force_array.max()/1e6, "MPa")
+            print("Max tensile stress:", force_array.max() / 1e6, "MPa")
             print("Max x displacement:", np.max(np.abs(u_g[0::3])), '\n',
                   "Max y displacement:", np.max(np.abs(u_g[1::3])), '\n',
                   "Max z displacement:", np.max(np.abs(u_g[2::3])))
@@ -254,22 +258,22 @@ def main(file_loc, optimizing=True):
 
         if plotting:
             fig = show_structure(node_list, elements, numerical_bc_list, natural_bc_list)
-            show_deformed(fig.get_axes()[0], 100*u_g, node_list, elements, line_style="dashed", rod_color="red")
+            show_deformed(fig.get_axes()[0], 100 * u_g, node_list, elements, line_style="dashed", rod_color="red")
             fig.suptitle("Deformed Structure")
             plt.show()
 
-            fig = show_forces(node_list, elements, force_array/1e6, abs_plot=abs_plotting)
+            fig = show_forces(node_list, elements, force_array / 1e6, abs_plot=abs_plotting)
             fig.suptitle("Structural stresses")
             plt.show()
 
 
-if __name__=='__main__':
-    cell_file_name = '2_not_j/structure1'
-    file_loc = cell_file_name +"_fullstruct"
+if __name__ == '__main__':
+    cell_file_name = '1_hecking_chonker/structure1'
+    file_loc = cell_file_name + "_fullstruct"
 
-    cell_rows, cell_columns = 6, 4
+    cell_rows, cell_columns = 6, 2
     total_generator_mass = 10E3 * 12 * cell_columns / 3
-    total_rotor_mass = 300E3/9.81 * cell_columns / 3
+    total_rotor_mass = 300E3 / 9.81 * cell_columns / 3
 
     optimizing = True
 
