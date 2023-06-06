@@ -1,7 +1,8 @@
 from matplotlib import pyplot as plt
-
+import copy
+import numpy as np
 from element import elements_assemble
-from plotting import show_structure, show_deformed, show_forces
+from plotting import show_structure, show_deformed, show_forces, show_masses
 from point import Point, load_points_from_file
 from material import Material, load_materials_from_file
 from profile import Profile, load_profiles_from_file
@@ -9,9 +10,7 @@ from connection import Connection, load_connections_from_file, write_connections
 from bcs import BoundaryCondition, load_natural_bcs, load_numerical_bcs
 from generate_profiles import smaller_profile, larger_profile
 from full_structure_generation import generate_structure
-import copy
-import numpy as np
-
+from mmoi_z import mmoi_structure, mmoi_drivetrain
 
 def compute_global_to_local_transform(dx: float, dy: float, dz: float) -> np.ndarray:
     alpha = np.arctan2(dy, dx);
@@ -61,14 +60,14 @@ def save_displacements_to_file(filename: str, nodes: list["Point"], u: np.ndarra
                 f"{pt.label},{u[3 * i + 0]},{u[3 * i + 1]},{u[3 * i + 2]},{r[3 * i + 0]},{r[3 * i + 1]},{r[3 * i + 2]}\n")
 
 
-def main(file_loc, optimizing=True):
+def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True):
     plotting = True
     printing = True
     if optimizing:
         plotting = False
         printing = False
 
-    abs_plotting = True
+    abs_plotting = False
     #   Load bare data from files
 
     node_list = load_points_from_file(file_loc + ".pts")
@@ -79,6 +78,8 @@ def main(file_loc, optimizing=True):
     profile_list = load_profiles_from_file(profile_loc)
     natural_bc_list = load_natural_bcs(file_loc + ".nat", node_list)
     numerical_bc_list = load_numerical_bcs(file_loc + ".num", node_list)
+    depth_nodes = [point for point in node_list if point.label == 'A0000' or point.label == 'B0000']
+    structural_depth = abs(depth_nodes[0].x - depth_nodes[1].x)
 
     running = True
     while running:
@@ -90,6 +91,9 @@ def main(file_loc, optimizing=True):
         elements = elements_assemble(connection_list, material_list, profile_list, node_list)
         n = len(node_list)
         n_dof = 3 * n
+        MMOIz = []
+        MMOIz.append(mmoi_drivetrain(node_list, tot_dt_mass, drive_train_count))
+        approx_mmoiz = 0
 
         if plotting:
             fig = show_structure(node_list, elements, numerical_bc_list, natural_bc_list)
@@ -111,8 +115,12 @@ def main(file_loc, optimizing=True):
             dx = n2.x - n1.x
             dy = n2.y - n1.y
             dz = n2.z - n1.z
+
             d = np.array(((dx,), (dy,), (dz,)))
             L = np.linalg.norm(d)
+
+
+
             T_one = compute_global_to_local_transform(dx, dy, dz)
             assert np.all(np.isclose(np.array(((1,), (0,), (0,))), T_one @ (d / L)))
             assert np.isclose(np.linalg.det(T_one), 1)
@@ -147,8 +155,10 @@ def main(file_loc, optimizing=True):
             #      [0, 1, 0, 0, 2, 0],
             #      [0, 0, 1, 0, 0, 2]])
             # M_g[np.ix_(indices, indices)] += M_e
-
-        #   Apply numerical BCs
+            MMOIz.append(mmoi_structure(n1, n2, p, mass, (structural_depth/2, 0., 0.)))
+            approx_mmoiz += mass / 2 * np.linalg.norm(((n1.x - structural_depth / 2), (n1.y - structural_depth / 2))) ** 2
+            approx_mmoiz += mass / 2 * np.linalg.norm(((n2.x - structural_depth / 2), (n2.y - structural_depth / 2))) ** 2
+            #   Apply numerical BCs
         for i, bc in enumerate(numerical_bc_list):
             pt_index = bc.node
             node = node_list[bc.node]
@@ -242,7 +252,6 @@ def main(file_loc, optimizing=True):
             force_array[i] /= A
 
         if old_connection_list == connection_list:
-            print("NO FUCKING WAY I CAN'T BELIEVE ITS ACTUALLY DONE")
             running = False
 
         write_connections_to_file(connection_loc, connection_list)
@@ -256,11 +265,13 @@ def main(file_loc, optimizing=True):
                   "Max y displacement:", np.max(np.abs(u_g[1::3])), '\n',
                   "Max z displacement:", np.max(np.abs(u_g[2::3])))
 
-            print("Structural mass is:", np.sum(M_g) / 3)
+            print("Structural (half) mass is:", np.sum(M_g) / 3)
+            print("Mass moment of inertia:", 2 * np.sum(MMOIz)/10E9, '10E9 kgm2')
+            # print("Approx MMOI:", approx_mmoiz/10E9, '10E9 kgm2')
 
         if plotting:
             fig = show_structure(node_list, elements, numerical_bc_list, natural_bc_list)
-            show_deformed(fig.get_axes()[0], 100 * u_g, node_list, elements, line_style="dashed", rod_color="red")
+            show_deformed(fig.get_axes()[0],  100*u_g, node_list, elements, line_style="dashed", rod_color="red")
             fig.suptitle("Deformed Structure")
             plt.show()
 
@@ -268,22 +279,27 @@ def main(file_loc, optimizing=True):
             fig.suptitle("Structural stresses")
             plt.show()
 
+            fig = show_masses(node_list, elements, material_list, profile_list)
+            fig.suptitle("Mass distribution")
+            plt.show()
+
 
 if __name__ == '__main__':
-    cell_file_name = '5_Janis_min_effort_design/structure1'
+    cell_file_name = '7_the_ultra_Jemiol_frontmounter/structure1'
     file_loc = cell_file_name + "_fullstruct"
 
-    cell_rows, cell_columns = 6, 4
+    cell_rows, cell_columns = 6, 3
     # ACTUAL MASS IS 13E3 PER DRIVE TRAIN
-    total_generator_mass = 10E3 * 12 * cell_columns / 3
+    total_generator_mass = 13E3 * 12 * cell_columns / 3
     total_rotor_mass = 300E3 / 9.81 * cell_columns / 3
+    gen_count = cell_columns * 4
 
-    optimizing = True
+    optimizing = False
 
     if optimizing:
         generate_structure(cell_file_name, rows=cell_rows, cols=cell_columns, total_gen_mass=total_generator_mass,
                            total_rotor_mass=total_rotor_mass)
-        main(file_loc, optimizing=True)
-        main(file_loc, optimizing=False)
+        main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=True)
+        main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False)
     else:
-        main(file_loc, optimizing=False)
+        main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False)
