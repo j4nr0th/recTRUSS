@@ -12,13 +12,14 @@ from generate_profiles import smaller_profile, larger_profile
 from full_structure_generation import generate_structure
 from mmoi_z import mmoi_structure, mmoi_drivetrain
 
+
 def compute_global_to_local_transform(dx: float, dy: float, dz: float) -> np.ndarray:
-    alpha = np.arctan2(dy, dx);
-    ca = np.cos(alpha);
-    sa = np.sin(alpha);
-    beta = -(np.pi / 2 - np.arctan2(np.hypot(dx, dy), dz));
-    cb = np.cos(beta);
-    sb = np.sin(beta);
+    alpha = np.arctan2(dy, dx)
+    ca = np.cos(alpha)
+    sa = np.sin(alpha)
+    beta = -(np.pi / 2 - np.arctan2(np.hypot(dx, dy), dz))
+    cb = np.cos(beta)
+    sb = np.sin(beta)
     T_z = np.array(
         [[ca, sa, 0],
          [-sa, ca, 0],
@@ -118,8 +119,6 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True):
 
             d = np.array(((dx,), (dy,), (dz,)))
             L = np.linalg.norm(d)
-
-
 
             T_one = compute_global_to_local_transform(dx, dy, dz)
             assert np.all(np.isclose(np.array(((1,), (0,), (0,))), T_one @ (d / L)))
@@ -237,6 +236,8 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True):
                             p.r ** 4 - (p.r - p.t) ** 4) / 4) / safety_factor_buck
                 if np.abs(F_lim) > A * m.sigma_y:
                     F_lim = -A * m.sigma_y / (safety_factor_mat * safety_factor_force)
+                # else:
+                #     print('THIS BOI WOULD BE BUCKLIN')
             if printing:
                 print(f"Force {connection_list[i].label} is {F_e}, limit is {F_lim}")
                 print(
@@ -271,7 +272,7 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True):
 
         if plotting:
             fig = show_structure(node_list, elements, numerical_bc_list, natural_bc_list)
-            show_deformed(fig.get_axes()[0],  100*u_g, node_list, elements, line_style="dashed", rod_color="red")
+            show_deformed(fig.get_axes()[0], 100 * u_g, node_list, elements, line_style="dashed", rod_color="red")
             fig.suptitle("Deformed Structure")
             plt.show()
 
@@ -285,20 +286,24 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True):
 
 
 if __name__ == '__main__':
-    cell_file_name = '7_the_ultra_Jemiol_frontmounter/structure1'
+    cell_file_name = "22_not_j_smoll/structure1"
     file_loc = cell_file_name + "_fullstruct"
+    optimizing = True
 
-    cell_rows, cell_columns = 6, 3
-    # ACTUAL MASS IS 13E3 PER DRIVE TRAIN
+    cell_rows, cell_columns = 10, 5
+    # TODO: THESE SHOULD BE INDEPENDANT OF THE COLUMNS!!!!
+    rotors_per_cell = 2
+
+    gen_count = rotors_per_cell * cell_columns
     total_generator_mass = 13E3 * 12 * cell_columns / 3
     total_rotor_mass = 300E3 / 9.81 * cell_columns / 3
-    gen_count = cell_columns * 4
 
-    optimizing = False
+    # TODO: this should take care of the HLDs THIS IS A PLACEHOLDER
+    additional_loads = [(cell_rows-1, 'x', -10000)]
 
     if optimizing:
         generate_structure(cell_file_name, rows=cell_rows, cols=cell_columns, total_gen_mass=total_generator_mass,
-                           total_rotor_mass=total_rotor_mass)
+                           total_rotor_mass=total_rotor_mass, additional_loads=additional_loads)
         main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=True)
         main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False)
     else:

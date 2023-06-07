@@ -109,32 +109,54 @@ def generate_numeric_bcs(filename_cell: str, nodes: list[Point], supported_verti
     bcs.to_csv(filename_full_struct)
 
 
-def add_generator_load(filename_full: str, generator_mass):
-    floor_points = [point for point in pd.read_csv(filename_full + ".pts", index_col=0).index if point[-1] == '0']
+def add_drivetrain_load(filename_full: str, generator_mass, rotor_mass):
+    pts = pd.read_csv(filename_full + ".pts", index_col=0).index
+    floor_points = {point for point in pts if point[-1] == '0'}
+    non_floor_points = set(pts) - floor_points
     gen_load = generator_mass * 9.81 / len(floor_points)
+    rotor_load = rotor_mass * 9.81 / len(non_floor_points)
+
     bcs = pd.read_csv(filename_full + '.nat', index_col=0)
-    for point in floor_points:
-        if point in bcs.index:
-            bcs.loc[point]['Fz'] -= gen_load
-        else:
-            bcs.loc[point] = [0,0,-gen_load]
+    for point in pts:
+        if point in floor_points:
+            if point in bcs.index:
+                bcs.loc[point]['Fz'] -= gen_load
+            else:
+                bcs.loc[point] = [0,0,-gen_load]
+
+        if point in non_floor_points:
+            if point in bcs.index:
+                bcs.loc[point]['Fz'] -= rotor_load
+            else:
+                bcs.loc[point] = [0,0,-rotor_load]
     bcs.to_csv(filename_full + '.nat')
 
 
-def add_rotor_mass(filename_full: str, total_rotor_mass):
-    non_floor_nodes = [point for point in pd.read_csv(filename_full + ".pts", index_col=0).index if point[-1] != '0']
-    rotor_load = 9.81 * total_rotor_mass / len(non_floor_nodes)
+def add_load_to_row(filename_full: str, total_force, rownr: int, axis: str='x'):
+    ax = axis.lower().strip()
+    assert ax in ['x', 'y', 'z']
+    pts = pd.read_csv(filename_full + ".pts", index_col=0).index
+    rowpts = [pt for pt in pts if int(pt[3:]) == rownr]
+    load_per_node = total_force / len(rowpts)
     bcs = pd.read_csv(filename_full + '.nat', index_col=0)
-    for point in non_floor_nodes:
+
+    for point in rowpts:
         if point in bcs.index:
-            bcs.loc[point]['Fz'] -= rotor_load
+            bcs.loc[point][f'F{ax}'] = load_per_node
         else:
-            bcs.loc[point] = [0, 0, -rotor_load]
+            if ax == 'x':
+                bcs.loc[point] = [load_per_node, 0, 0]
+            if ax == 'y':
+                bcs.loc[point] = [0, load_per_node, 0]
+            if ax == 'z':
+                bcs.loc[point] = [0, 0, load_per_node]
+
     bcs.to_csv(filename_full + '.nat')
 
 
 def generate_structure(cell_filename: str, rows, cols, total_gen_mass,
-                       total_rotor_mass, constrained_points=('A0000', 'B0000')):
+                       total_rotor_mass, constrained_points=('A0000', 'B0000'),
+                       additional_loads: list[tuple[int, str, float]] = ()):
 
     """
     NAMING SCHEME CELL:
@@ -164,21 +186,23 @@ def generate_structure(cell_filename: str, rows, cols, total_gen_mass,
     layers = rows
     columns = cols
 
-
     full_structure_name = cell_filename + '_fullstruct'
 
     node_list = load_points_from_file(cell_filename + ".pts")
-    material_list = load_materials_from_file("full_structure3/sample.mat")
-    profile_list = load_profiles_from_file(full_structure_name + ".pro")
+    # material_list = load_materials_from_file("full_structure3/sample.mat")
+    # profile_list = load_profiles_from_file(full_structure_name + ".pro")
     connection_list = load_connections_from_file(cell_filename + ".con")
-    natural_bc_list = load_natural_bcs(cell_filename + ".nat", node_list)
-    elements = elements_assemble(connection_list, material_list, profile_list, node_list)
+    # natural_bc_list = load_natural_bcs(cell_filename + ".nat", node_list)
+    # elements = elements_assemble(connection_list, material_list, profile_list, node_list)
 
     newnodes, newconnections = copy_nodes(node_list, connection_list, layers=layers, columns=columns)
-    newelements = elements_assemble(newconnections, material_list, profile_list, newnodes)
+    # newelements = elements_assemble(newconnections, material_list, profile_list, newnodes)
     extend_natural_bcs(cell_filename + ".nat", newnodes)
-    add_generator_load(full_structure_name, total_gen_mass)
-    add_rotor_mass(full_structure_name, total_rotor_mass)
+    add_drivetrain_load(full_structure_name, total_gen_mass, total_rotor_mass)
+
+    for row, axis, load in additional_loads:
+        add_load_to_row(full_structure_name, total_force=load, rownr=row, axis=axis)
+
     generate_numeric_bcs(cell_filename + ".num", newnodes, constrained_points)
     write_points_to_file(full_structure_name + ".pts", newnodes)
     write_connections_to_file(full_structure_name + ".con", newconnections)

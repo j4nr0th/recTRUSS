@@ -9,7 +9,7 @@ def generate_profiles(min_radius, max_radius, steps, filename: str):
 
     for r in np.geomspace(min_radius, max_radius, steps):
         radius = sig.round(r, sigfigs=2)
-        thickness_to_radius = 0.1
+        thickness_to_radius = 0.025
         t = sig.round(thickness_to_radius * radius, sigfigs=2)
         label = 'P' + str(radius).replace('.','')
         if len(label) < 5:
@@ -42,4 +42,4 @@ def larger_profile(profile_label, fname):
 
 
 if __name__=='__main__':
-    generate_profiles(0.05, 2, 25, "full_structure3/structure1_fullstruct.pro")
+    generate_profiles(0.05, 5, 30, "72_the_smol_Jemiol/structure1_fullstruct.pro")

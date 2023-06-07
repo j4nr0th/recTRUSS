@@ -1,0 +1,5 @@
+connection label,material label,profile label,point label 1,point label 2
+AE,steel,p1,A,E
+BE,steel,p1,B,E
+CE,steel,p2,C,E
+DE,steel,p1,D,E
