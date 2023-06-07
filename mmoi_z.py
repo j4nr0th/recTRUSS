@@ -33,6 +33,5 @@ def mmoi_drivetrain(pts: list[Point], tot_dt_mass, drivetrain_count):
     max_y = max([point.y for point in pts])
     genspacing = max_y / drivetrain_count
     mmoi = tot_dt_mass / drivetrain_count * sum((i * genspacing) ** 2 for i in np.linspace(0, max_y, drivetrain_count))
-    print(mmoi)
     return mmoi
 

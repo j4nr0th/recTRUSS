@@ -142,7 +142,7 @@ def add_load_to_row(filename_full: str, total_force, rownr: int, axis: str='x'):
 
     for point in rowpts:
         if point in bcs.index:
-            bcs.loc[point][f'F{ax}'] = load_per_node
+            bcs.loc[point][f'F{ax}'] += load_per_node
         else:
             if ax == 'x':
                 bcs.loc[point] = [load_per_node, 0, 0]
@@ -189,14 +189,9 @@ def generate_structure(cell_filename: str, rows, cols, total_gen_mass,
     full_structure_name = cell_filename + '_fullstruct'
 
     node_list = load_points_from_file(cell_filename + ".pts")
-    # material_list = load_materials_from_file("full_structure3/sample.mat")
-    # profile_list = load_profiles_from_file(full_structure_name + ".pro")
-    connection_list = load_connections_from_file(cell_filename + ".con")
-    # natural_bc_list = load_natural_bcs(cell_filename + ".nat", node_list)
-    # elements = elements_assemble(connection_list, material_list, profile_list, node_list)
 
+    connection_list = load_connections_from_file(cell_filename + ".con")
     newnodes, newconnections = copy_nodes(node_list, connection_list, layers=layers, columns=columns)
-    # newelements = elements_assemble(newconnections, material_list, profile_list, newnodes)
     extend_natural_bcs(cell_filename + ".nat", newnodes)
     add_drivetrain_load(full_structure_name, total_gen_mass, total_rotor_mass)
 

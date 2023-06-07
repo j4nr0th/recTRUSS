@@ -61,9 +61,8 @@ def save_displacements_to_file(filename: str, nodes: list["Point"], u: np.ndarra
                 f"{pt.label},{u[3 * i + 0]},{u[3 * i + 1]},{u[3 * i + 2]},{r[3 * i + 0]},{r[3 * i + 1]},{r[3 * i + 2]}\n")
 
 
-def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True):
-    plotting = True
-    printing = True
+def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=True, printing=True, gravity=True):
+
     if optimizing:
         plotting = False
         printing = False
@@ -79,8 +78,8 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True):
     profile_list = load_profiles_from_file(profile_loc)
     natural_bc_list = load_natural_bcs(file_loc + ".nat", node_list)
     numerical_bc_list = load_numerical_bcs(file_loc + ".num", node_list)
-    depth_nodes = [point for point in node_list if point.label == 'A0000' or point.label == 'B0000']
-    structural_depth = abs(depth_nodes[0].x - depth_nodes[1].x)
+    x_vals = {point.x for point in node_list}
+    structural_depth = abs(max(x_vals) - min(x_vals))
 
     running = True
     while running:
@@ -93,7 +92,8 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True):
         n = len(node_list)
         n_dof = 3 * n
         MMOIz = []
-        MMOIz.append(mmoi_drivetrain(node_list, tot_dt_mass, drive_train_count))
+        if tot_dt_mass > 0 and total_rotor_mass > 0:
+            MMOIz.append(mmoi_drivetrain(node_list, tot_dt_mass, drive_train_count))
         approx_mmoiz = 0
 
         if plotting:
@@ -138,8 +138,9 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True):
             K_g[np.ix_(indices, indices)] += K_e
             mass = m.rho * A * L
             #   Add gravitational force
-            f_g[3 * e.node1 + 2] += -0.5 * m.rho * A * L * 9.81
-            f_g[3 * e.node2 + 2] += -0.5 * m.rho * A * L * 9.81
+            if gravity:
+                f_g[3 * e.node1 + 2] += -0.5 * m.rho * A * L * 9.81
+                f_g[3 * e.node2 + 2] += -0.5 * m.rho * A * L * 9.81
             #   Add temperature
             # F_thermal = np.abs(n1.t - n2.t) * E * A * m.alpha / (2 * L)
             # f_g[3 * e.node2: 3 * e.node2 + 3] += d * F_thermal
@@ -284,22 +285,31 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True):
             fig.suptitle("Mass distribution")
             plt.show()
 
+    return force_array
+
 
 if __name__ == '__main__':
-    cell_file_name = "22_not_j_smoll/structure1"
+    cell_file_name = "7_the_ultra_Jemiol_frontmounter/structure1"
     file_loc = cell_file_name + "_fullstruct"
     optimizing = True
 
-    cell_rows, cell_columns = 10, 5
+    cell_rows, cell_columns = 6, 3
     # TODO: THESE SHOULD BE INDEPENDANT OF THE COLUMNS!!!!
-    rotors_per_cell = 2
 
+    rotors_per_cell = 2
     gen_count = rotors_per_cell * cell_columns
     total_generator_mass = 13E3 * 12 * cell_columns / 3
     total_rotor_mass = 300E3 / 9.81 * cell_columns / 3
+    # thrust of rotors is changed in the .nat cell file atm
+    # storm conditions : 31 MN, * 4 in downforce, 15 MN *4 thrust
+    skipped_rows = 2
+    total_HLD_downforce = 0.778E6 * (cell_rows - skipped_rows)
+    total_HLD_thrust = total_HLD_downforce * 0.25
 
-    # TODO: this should take care of the HLDs THIS IS A PLACEHOLDER
-    additional_loads = [(cell_rows-1, 'x', -10000)]
+    HLD_rows = cell_rows - skipped_rows + 1
+    additional_loads = [(i, 'x', -total_HLD_thrust/HLD_rows) for i in range(skipped_rows, HLD_rows + skipped_rows)]
+    additional_loads += [(i, 'z', -total_HLD_downforce/HLD_rows) for i in range(skipped_rows, HLD_rows + skipped_rows)]
+
 
     if optimizing:
         generate_structure(cell_file_name, rows=cell_rows, cols=cell_columns, total_gen_mass=total_generator_mass,
