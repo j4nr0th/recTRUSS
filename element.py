@@ -37,7 +37,7 @@ def elements_assemble(connections: list[Connection], materials: list[Material], 
         i_pro = profiles.index(pro[0])
 
         e = Element(i_p1, i_p2, i_mat, i_pro)
-        element_list[i] = e;
+        element_list[i] = e
 
     return element_list
 

@@ -4,9 +4,7 @@ import sigfig as sig
 
 
 def generate_profiles(min_radius, max_radius, steps, filename: str):
-    profiles = pd.DataFrame(columns=['profile label', 'radius', 'thickness'])
-    # zero_force_radius = [0.001]
-
+    profiles = pd.DataFrame(columns=['radius', 'thickness'], index=[]).rename_axis('profile label')
     for r in np.geomspace(min_radius, max_radius, steps):
         radius = sig.round(r, sigfigs=2)
         thickness_to_radius = 0.05
@@ -14,9 +12,8 @@ def generate_profiles(min_radius, max_radius, steps, filename: str):
         label = 'P' + str(radius).replace('.','')
         if len(label) < 5:
             label += ''.join(['0'] * (5 - len(label)))
-        profiles = pd.concat([profiles, pd.DataFrame([[label, radius, t]],
-                                                     columns=['profile label', 'radius', 'thickness'])])
-    profiles.to_csv(filename, index=False)
+        profiles.loc[label] = [radius, t]
+    profiles.to_csv(filename, index=True)
 
 
 def smaller_profile(profile_label, fname):
@@ -42,4 +39,4 @@ def larger_profile(profile_label, fname):
 
 
 if __name__=='__main__':
-    generate_profiles(0.15, 2, 20, "22_not_j_smoll/structure1_fullstruct.pro")
+    generate_profiles(0.05, 2, 20, "2_not_j/structure1_fullstruct.pro")

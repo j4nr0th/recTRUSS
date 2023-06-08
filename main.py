@@ -9,7 +9,7 @@ from profile import Profile, load_profiles_from_file
 from connection import Connection, load_connections_from_file, write_connections_to_file
 from bcs import BoundaryCondition, load_natural_bcs, load_numerical_bcs
 from generate_profiles import smaller_profile, larger_profile
-from full_structure_generation import generate_structure
+from full_structure_generation import generate_structure, add_torque
 from mmoi_z import mmoi_structure, mmoi_drivetrain
 
 
@@ -61,7 +61,7 @@ def save_displacements_to_file(filename: str, nodes: list["Point"], u: np.ndarra
                 f"{pt.label},{u[3 * i + 0]},{u[3 * i + 1]},{u[3 * i + 2]},{r[3 * i + 0]},{r[3 * i + 1]},{r[3 * i + 2]}\n")
 
 
-def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=True, printing=True, gravity=True):
+def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=True, printing=True, gravity=True, torque=False):
 
     if optimizing:
         plotting = False
@@ -76,13 +76,19 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
     profile_loc = file_loc + ".pro"
     connection_loc = file_loc + ".con"
     profile_list = load_profiles_from_file(profile_loc)
-    natural_bc_list = load_natural_bcs(file_loc + ".nat", node_list)
+    if not torque:
+        natural_bc_list = load_natural_bcs(file_loc + ".nat", node_list)
+    else:
+        natural_bc_list = load_natural_bcs(file_loc + "_torqued" + ".nat", node_list)
     numerical_bc_list = load_numerical_bcs(file_loc + ".num", node_list)
     x_vals = {point.x for point in node_list}
     structural_depth = abs(max(x_vals) - min(x_vals))
 
     running = True
-    while running:
+    i=0
+    it_limit = len(profile_list) * 3
+    while running and i < it_limit:
+        i+=1
         if not optimizing:
             running = False
         connection_list = load_connections_from_file(connection_loc)
@@ -242,13 +248,15 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
                 print(f"Force {connection_list[i].label} is {F_e}, limit is {F_lim}")
                 print(
                     f"Stress {connection_list[i].label} is, {F_e / A}, which is {np.abs(F_e / F_lim) * 100} % of allowed\n")
+                if np.abs(F_e / F_lim) * 100 > 100:
+                    print('Not within safety factor \n \n')
 
             if abs(F_e / F_lim) > 1:
                 connection_list[i].profile = larger_profile(connection_list[i].profile, profile_loc)
-                print(f'changed {old_connection_list[i].profile} to {connection_list[i].profile}')
+                # print(f'changed {old_connection_list[i].profile} to {connection_list[i].profile}')
             if abs(F_e / F_lim) < 0.5:
                 connection_list[i].profile = smaller_profile(connection_list[i].profile, profile_loc)
-                print(f'changed {old_connection_list[i].profile} to {connection_list[i].profile}')
+                # print(f'changed {old_connection_list[i].profile} to {connection_list[i].profile}')
 
             force_array[i] /= A
 
@@ -284,7 +292,7 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
             fig.suptitle("Mass distribution")
             plt.show()
 
-    return force_array
+    return force_array, 2 * np.sum(MMOIz)
 
 
 if __name__ == '__main__':
@@ -301,7 +309,10 @@ if __name__ == '__main__':
     gen_count = rotors_per_cell * cell_columns
     total_generator_mass = 13E3 * 12
     total_rotor_mass = 300E3 / 9.81
-
+    time_to_turn_90 = 100
+    angular_acc = 0.5 * np.pi / time_to_turn_90 ** 2
+    yaw_torque = angular_acc * 100E9
+    # TODO: CHECK THAT THE TORQUE IS ACTING IN THRUST DIRECTION
     # storm conditions : 0 MN * 4 in downforce, 1.6E MN per cell thrust
     # HLD operational 0.778E6 * (cell_rows - skipped_rows) * cell_columns
     skipped_rows = 2
@@ -313,10 +324,36 @@ if __name__ == '__main__':
     additional_loads += [(i, 'B', 'z', -total_HLD_downforce/HLD_rows) for i in range(skipped_rows, HLD_rows + skipped_rows)]
 
     if optimizing:
-        generate_structure(cell_file_name, layers=cell_rows, columns=cell_columns, total_rotor_thrust=total_thrust_rotors, total_gen_mass=total_generator_mass,
-                           total_rotor_mass=total_rotor_mass, additional_loads=additional_loads,
-                           height=total_height, width=total_width, depth=total_depth)
-        main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=True)
-        main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False)
+        if yaw_torque != 0:
+            generate_structure(cell_file_name, layers=cell_rows, columns=cell_columns,
+                               total_rotor_thrust=total_thrust_rotors, total_gen_mass=total_generator_mass,
+                               total_rotor_mass=total_rotor_mass, additional_loads=additional_loads,
+                               height=total_height, width=total_width, depth=total_depth)
+            running_yaw_opt = True
+            j = 0
+            it_limit = 100
+            while running_yaw_opt and j < it_limit:
+                j += 1
+                print(j)
+                add_torque(filename_full=file_loc, ang_acc=angular_acc,
+                           tot_gen_mass=total_generator_mass, tot_rotor_mass=total_rotor_mass,
+                           axis=(total_depth / 2, 0, 0))
+                main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass,
+                     optimizing=True, torque=True)
+
+            main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False, torque=True)
+
+        else:
+            generate_structure(cell_file_name, layers=cell_rows, columns=cell_columns,
+                               total_rotor_thrust=total_thrust_rotors, total_gen_mass=total_generator_mass,
+                               total_rotor_mass=total_rotor_mass, additional_loads=additional_loads,
+                               height=total_height, width=total_width, depth=total_depth)
+            main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=True)
+            main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False)
+
     else:
-        main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False)
+        if yaw_torque != 0:
+            main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False, torque=True)
+        else:
+            main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False)
+

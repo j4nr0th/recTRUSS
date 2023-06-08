@@ -175,7 +175,7 @@ def add_load_to_row(filename_full: str, total_force, rownr: int, node_indicator:
     bcs.to_csv(filename_full + '.nat')
 
 
-def add_torque(filename_full: str, torque: float, tot_gen_mass: float, tot_rotor_mass: float, axis: tuple[float,...]):
+def add_torque(filename_full: str, ang_acc: float, tot_gen_mass: float, tot_rotor_mass: float, axis: tuple[float,...]):
     pts = pd.read_csv(filename_full + ".pts", index_col=0)
     pts.loc[:, 'mass'] = 0.
     floor_nodes = [pt for pt in pts.index if int(pt[3:]) == 0]
@@ -211,21 +211,23 @@ def add_torque(filename_full: str, torque: float, tot_gen_mass: float, tot_rotor
     for point in rotor_mount_nodes:
         pts.loc[point, 'mass'] += rotor_mass_node
 
-    pt_distance = list(np.array((pts['x']-axis[0],pts['y']-axis[1],pts['z']-axis[2])).T)
+    pt_distance = list(np.array((pts['x']-axis[0],pts['y']-axis[1], [0]*len(pts))).T)
     pts = pts.assign(distance=pt_distance)
-    alpha = [0, 0, torque]
+    alpha = [0, 0, ang_acc]
     pts.loc[:, 'acc'] = [[0,0,0]] * len(pts)
+    # pts.loc[:, 'eq_T_force'] = [[0,0,0]] * len(pts)
     for index, point in pts.iterrows():
-        # print(pts.loc[index, 'distance'])
-        pts.loc[index, 'acc'] = np.cross(alpha, point['distance'])
+        pts.at[index, 'acc'] = np.cross(alpha, point['distance'])
 
-    # for distance_vector in pt_distance:
-    #     acceleration = np.cross(alpha, distance_vector)
-    #     force =
+    pts.loc[:, 'eq_T_force'] = pts.loc[:, 'mass'] * pts.loc[:, 'acc']
 
-    # print(pt_distance)
-    # pts.assign(distance =[np.array([[pts['x']-axis[0]],[pts['y']-axis[1]],[pts['z']-axis[2]]])])
-    print(pts)
+    for index, pt in pts.iterrows():
+        if index in bcs.index:
+            bcs.loc[index,["Fx", "Fy", "Fz"]] += pt['eq_T_force']
+        else:
+            bcs.loc[index,["Fx", "Fy", "Fz"]] = pt['eq_T_force']
+
+    bcs.to_csv(filename_full + "_torqued" + ".nat")
 
 
 def scale_cell(filename_cell: str, tot_width, tot_height, tot_depth, cell_columns, cell_rows):
@@ -295,6 +297,3 @@ def generate_structure(cell_filename: str, layers: int, columns: int, total_gen_
         add_load_to_row(full_structure_name, total_force=load, rownr=row, axis=axis, node_indicator=node_indicator)
 
     generate_numeric_bcs(cell_filename + ".num", newnodes, constrained_points)
-
-
-add_torque("2_not_j/structure1_fullstruct", 5,5,5,(0,15,0))
