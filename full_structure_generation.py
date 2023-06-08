@@ -109,6 +109,22 @@ def generate_numeric_bcs(filename_cell: str, nodes: list[Point], supported_verti
     bcs.to_csv(filename_full_struct)
 
 
+def add_rotor_thrust(filename_full: str, total_thrust: float):
+    """
+    Forgive me for committing copy paste badness im lazy
+    """
+    pts = pd.read_csv(filename_full + ".pts", index_col=0).index
+    non_floor_points_front = {point for point in pts if int(point[3:]) != '0' and point[0] == 'A'}
+    rotor_thrust = total_thrust / len(non_floor_points_front)
+    bcs = pd.read_csv(filename_full + '.nat', index_col=0)
+    for pt in non_floor_points_front:
+        if pt in bcs.index:
+            bcs.loc[pt]['Fx'] -= rotor_thrust
+        else:
+            bcs.loc[pt] = [-rotor_thrust,0,0]
+    bcs.to_csv(filename_full + '.nat')
+
+
 def add_drivetrain_load(filename_full: str, generator_mass, rotor_mass):
     pts = pd.read_csv(filename_full + ".pts", index_col=0).index
     floor_points = {point for point in pts if point[-1] == '0'}
@@ -132,11 +148,16 @@ def add_drivetrain_load(filename_full: str, generator_mass, rotor_mass):
     bcs.to_csv(filename_full + '.nat')
 
 
-def add_load_to_row(filename_full: str, total_force, rownr: int, axis: str='x'):
+def add_load_to_row(filename_full: str, total_force, rownr: int, node_indicator: str = '', axis: str = 'x'):
     ax = axis.lower().strip()
     assert ax in ['x', 'y', 'z']
     pts = pd.read_csv(filename_full + ".pts", index_col=0).index
-    rowpts = [pt for pt in pts if int(pt[3:]) == rownr]
+    node_types = {pt[0] for pt in pts}
+    assert node_indicator in node_types or node_indicator == ''
+    if node_indicator == '':
+        rowpts = [pt for pt in pts if int(pt[3:]) == rownr]
+    else:
+        rowpts = [pt for pt in pts if int(pt[3:]) == rownr and pt[0] == node_indicator]
     load_per_node = total_force / len(rowpts)
     bcs = pd.read_csv(filename_full + '.nat', index_col=0)
 
@@ -154,9 +175,10 @@ def add_load_to_row(filename_full: str, total_force, rownr: int, axis: str='x'):
     bcs.to_csv(filename_full + '.nat')
 
 
-def generate_structure(cell_filename: str, rows, cols, total_gen_mass,
-                       total_rotor_mass, constrained_points=('A0000', 'B0000'),
-                       additional_loads: list[tuple[int, str, float]] = ()):
+def generate_structure(cell_filename: str, rows: int, cols: int, total_gen_mass: float, total_rotor_thrust: float,
+                       total_rotor_mass: float, constrained_points=('A0000', 'B0000'),
+                       additional_loads: list[tuple[int, str, str, float]] = (),
+                       extend_forces_from_cell=False):
 
     """
     NAMING SCHEME CELL:
@@ -188,15 +210,22 @@ def generate_structure(cell_filename: str, rows, cols, total_gen_mass,
 
     full_structure_name = cell_filename + '_fullstruct'
 
-    node_list = load_points_from_file(cell_filename + ".pts")
+    new_bc_nat_loc = full_structure_name + '.nat'
+    with open(new_bc_nat_loc, 'w') as f:
+        f.write('point label,Fx,Fy,Fz\n')
 
+    node_list = load_points_from_file(cell_filename + ".pts")
     connection_list = load_connections_from_file(cell_filename + ".con")
     newnodes, newconnections = copy_nodes(node_list, connection_list, layers=layers, columns=columns)
-    extend_natural_bcs(cell_filename + ".nat", newnodes)
+
+    if extend_forces_from_cell:
+        extend_natural_bcs(cell_filename + ".nat", newnodes)
+
+    add_rotor_thrust(full_structure_name, total_thrust=total_rotor_thrust)
     add_drivetrain_load(full_structure_name, total_gen_mass, total_rotor_mass)
 
-    for row, axis, load in additional_loads:
-        add_load_to_row(full_structure_name, total_force=load, rownr=row, axis=axis)
+    for row, node_indicator, axis, load in additional_loads:
+        add_load_to_row(full_structure_name, total_force=load, rownr=row, axis=axis, node_indicator=node_indicator)
 
     generate_numeric_bcs(cell_filename + ".num", newnodes, constrained_points)
     write_points_to_file(full_structure_name + ".pts", newnodes)

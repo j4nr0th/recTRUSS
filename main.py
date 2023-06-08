@@ -289,30 +289,30 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
 
 
 if __name__ == '__main__':
-    cell_file_name = "7_the_ultra_Jemiol_frontmounter/structure1"
+    cell_file_name = "2_not_j/structure1"
     file_loc = cell_file_name + "_fullstruct"
     optimizing = True
 
+    # WHEN ANY OF THESE ARE CHANGED, IT HAS TO BE REOPTIMIZED OR THE NEW FORCES WONT BE APPLIED
     cell_rows, cell_columns = 6, 3
-    # TODO: THESE SHOULD BE INDEPENDANT OF THE COLUMNS!!!!
-
+    total_thrust_rotors = 8.53E6/2/2
     rotors_per_cell = 2
     gen_count = rotors_per_cell * cell_columns
-    total_generator_mass = 13E3 * 12 * cell_columns / 3
-    total_rotor_mass = 300E3 / 9.81 * cell_columns / 3
-    # thrust of rotors is changed in the .nat cell file atm
-    # storm conditions : 31 MN, * 4 in downforce, 15 MN *4 thrust
+    total_generator_mass = 13E3 * 12
+    total_rotor_mass = 300E3 / 9.81
+
+    # storm conditions : 0 MN * 4 in downforce, 1.6E MN per cell thrust
+    # HLD operational 0.778E6 * (cell_rows - skipped_rows) * cell_columns
     skipped_rows = 2
-    total_HLD_downforce = 0.778E6 * (cell_rows - skipped_rows)
+    total_HLD_downforce = 0.778E6 * (cell_rows - skipped_rows) * cell_columns
     total_HLD_thrust = total_HLD_downforce * 0.25
 
     HLD_rows = cell_rows - skipped_rows + 1
-    additional_loads = [(i, 'x', -total_HLD_thrust/HLD_rows) for i in range(skipped_rows, HLD_rows + skipped_rows)]
-    additional_loads += [(i, 'z', -total_HLD_downforce/HLD_rows) for i in range(skipped_rows, HLD_rows + skipped_rows)]
-
+    additional_loads = [(i, 'B', 'x', -total_HLD_thrust/HLD_rows) for i in range(skipped_rows, HLD_rows + skipped_rows)]
+    additional_loads += [(i, 'B', 'z', -total_HLD_downforce/HLD_rows) for i in range(skipped_rows, HLD_rows + skipped_rows)]
 
     if optimizing:
-        generate_structure(cell_file_name, rows=cell_rows, cols=cell_columns, total_gen_mass=total_generator_mass,
+        generate_structure(cell_file_name, rows=cell_rows, cols=cell_columns, total_rotor_thrust=total_thrust_rotors, total_gen_mass=total_generator_mass,
                            total_rotor_mass=total_rotor_mass, additional_loads=additional_loads)
         main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=True)
         main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False)

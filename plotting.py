@@ -189,6 +189,7 @@ def show_forces(pts: list[Point], elements: list[Element], force_arr: np.ndarray
 
     return fig
 
+
 def show_masses(pts: list[Point], elements: list[Element], material_list: list[Material],
                 profile_list: list[Profile], **kwargs) -> plt.Figure:
     #   Set colors and sizes
