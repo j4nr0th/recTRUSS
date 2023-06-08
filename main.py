@@ -237,8 +237,7 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
                             p.r ** 4 - (p.r - p.t) ** 4) / 4) / safety_factor_buck
                 if np.abs(F_lim) > A * m.sigma_y:
                     F_lim = -A * m.sigma_y / (safety_factor_mat * safety_factor_force)
-                # else:
-                #     print('THIS BOI WOULD BE BUCKLIN')
+
             if printing:
                 print(f"Force {connection_list[i].label} is {F_e}, limit is {F_lim}")
                 print(
@@ -294,7 +293,9 @@ if __name__ == '__main__':
     optimizing = True
 
     # WHEN ANY OF THESE ARE CHANGED, IT HAS TO BE REOPTIMIZED OR THE NEW FORCES WONT BE APPLIED
+    total_height, total_width, total_depth = 270, 270, 35
     cell_rows, cell_columns = 6, 3
+    # note these are currently not scaling with the height and width of the structure
     total_thrust_rotors = 8.53E6/2/2
     rotors_per_cell = 2
     gen_count = rotors_per_cell * cell_columns
@@ -312,8 +313,9 @@ if __name__ == '__main__':
     additional_loads += [(i, 'B', 'z', -total_HLD_downforce/HLD_rows) for i in range(skipped_rows, HLD_rows + skipped_rows)]
 
     if optimizing:
-        generate_structure(cell_file_name, rows=cell_rows, cols=cell_columns, total_rotor_thrust=total_thrust_rotors, total_gen_mass=total_generator_mass,
-                           total_rotor_mass=total_rotor_mass, additional_loads=additional_loads)
+        generate_structure(cell_file_name, layers=cell_rows, columns=cell_columns, total_rotor_thrust=total_thrust_rotors, total_gen_mass=total_generator_mass,
+                           total_rotor_mass=total_rotor_mass, additional_loads=additional_loads,
+                           height=total_height, width=total_width, depth=total_depth)
         main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=True)
         main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False)
     else:

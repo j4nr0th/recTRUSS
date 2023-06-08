@@ -175,10 +175,20 @@ def add_load_to_row(filename_full: str, total_force, rownr: int, node_indicator:
     bcs.to_csv(filename_full + '.nat')
 
 
-def generate_structure(cell_filename: str, rows: int, cols: int, total_gen_mass: float, total_rotor_thrust: float,
+def scale_cell(filename_cell: str, tot_width, tot_height, tot_depth, cell_columns, cell_rows):
+    pts = pd.read_csv(filename_cell + ".pts", index_col=0)
+    width_single_cell = tot_width / cell_columns / 2
+    height_single_cell = tot_height / cell_rows
+    pts.loc[pts['x'] != 0, 'x'] = tot_depth
+    pts.loc[pts['y'] != 0, 'y'] = width_single_cell
+    pts.loc[pts['z'] != 0, 'z'] = height_single_cell
+    pts.to_csv(filename_cell + ".pts")
+
+
+def generate_structure(cell_filename: str, layers: int, columns: int, total_gen_mass: float, total_rotor_thrust: float,
                        total_rotor_mass: float, constrained_points=('A0000', 'B0000'),
                        additional_loads: list[tuple[int, str, str, float]] = (),
-                       extend_forces_from_cell=False):
+                       extend_forces_from_cell=False, height=280, width=270, depth=35, cell_scaling=True):
 
     """
     NAMING SCHEME CELL:
@@ -205,18 +215,22 @@ def generate_structure(cell_filename: str, rows: int, cols: int, total_gen_mass:
     """
 
     # Number of requested layers and columns (of half the structure width) of cells
-    layers = rows
-    columns = cols
+    if cell_scaling:
+        scale_cell(cell_filename, tot_width=width, tot_height=height,
+                   tot_depth=depth, cell_rows=layers, cell_columns=columns)
 
     full_structure_name = cell_filename + '_fullstruct'
-
-    new_bc_nat_loc = full_structure_name + '.nat'
-    with open(new_bc_nat_loc, 'w') as f:
-        f.write('point label,Fx,Fy,Fz\n')
 
     node_list = load_points_from_file(cell_filename + ".pts")
     connection_list = load_connections_from_file(cell_filename + ".con")
     newnodes, newconnections = copy_nodes(node_list, connection_list, layers=layers, columns=columns)
+    write_points_to_file(full_structure_name + ".pts", newnodes)
+    write_connections_to_file(full_structure_name + ".con", newconnections)
+
+
+    new_bc_nat_loc = full_structure_name + '.nat'
+    with open(new_bc_nat_loc, 'w') as f:
+        f.write('point label,Fx,Fy,Fz\n')
 
     if extend_forces_from_cell:
         extend_natural_bcs(cell_filename + ".nat", newnodes)
@@ -228,5 +242,3 @@ def generate_structure(cell_filename: str, rows: int, cols: int, total_gen_mass:
         add_load_to_row(full_structure_name, total_force=load, rownr=row, axis=axis, node_indicator=node_indicator)
 
     generate_numeric_bcs(cell_filename + ".num", newnodes, constrained_points)
-    write_points_to_file(full_structure_name + ".pts", newnodes)
-    write_connections_to_file(full_structure_name + ".con", newconnections)
