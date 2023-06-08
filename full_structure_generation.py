@@ -128,9 +128,9 @@ def add_rotor_thrust(filename_full: str, total_thrust: float):
 def add_drivetrain_load(filename_full: str, generator_mass, rotor_mass):
     pts = pd.read_csv(filename_full + ".pts", index_col=0).index
     floor_points = {point for point in pts if point[-1] == '0'}
-    non_floor_points = set(pts) - floor_points
+    non_floor_front_points = {point for point in pts if int(point[3:]) != '0' and point[0] == 'A'}
     gen_load = generator_mass * 9.81 / len(floor_points)
-    rotor_load = rotor_mass * 9.81 / len(non_floor_points)
+    rotor_load = rotor_mass * 9.81 / len(non_floor_front_points)
 
     bcs = pd.read_csv(filename_full + '.nat', index_col=0)
     for point in pts:
@@ -140,7 +140,7 @@ def add_drivetrain_load(filename_full: str, generator_mass, rotor_mass):
             else:
                 bcs.loc[point] = [0,0,-gen_load]
 
-        if point in non_floor_points:
+        if point in non_floor_front_points:
             if point in bcs.index:
                 bcs.loc[point]['Fz'] -= rotor_load
             else:
@@ -173,6 +173,59 @@ def add_load_to_row(filename_full: str, total_force, rownr: int, node_indicator:
                 bcs.loc[point] = [0, 0, load_per_node]
 
     bcs.to_csv(filename_full + '.nat')
+
+
+def add_torque(filename_full: str, torque: float, tot_gen_mass: float, tot_rotor_mass: float, axis: tuple[float,...]):
+    pts = pd.read_csv(filename_full + ".pts", index_col=0)
+    pts.loc[:, 'mass'] = 0.
+    floor_nodes = [pt for pt in pts.index if int(pt[3:]) == 0]
+    rotor_mount_nodes = [pt for pt in pts.index if int(pt[3:]) != 0 and pt[0]== 'A']
+    bcs = pd.read_csv(filename_full + ".nat", index_col=0)
+    profiles = pd.read_csv(filename_full + ".pro", index_col=0)
+    connections = pd.read_csv(filename_full + ".con", index_col=0)
+    materials = pd.read_csv(filename_full.split("/")[0] + "/sample.mat", index_col=0)
+
+    con_profiles = profiles.loc[connections["profile label"]]
+
+    point1, point2 = pts.loc[connections["point label 1"]], pts.loc[connections["point label 2"]]
+    # should fix this so I dont have to convert to arrays cuz ugly
+    con_length = ((np.array(point1['x']) - np.array(point2['x']))**2 +
+                  (np.array(point1['y']) - np.array(point2['y']))**2 +
+                  (np.array(point1['z']) - np.array(point2['z']))**2) ** 0.5
+
+    con_density = materials.loc[connections["material label"], "density"]
+    con_mass = np.pi * (np.array(con_profiles["radius"]) ** 2 - (np.array(con_profiles["radius"]) - np.array(con_profiles["thickness"])) ** 2) \
+               * con_length * np.array(con_density)
+
+    connections['mass'] = con_mass.T
+    # I suk at pandas and give up
+    for index, connection in connections.loc[:, ['point label 1', 'point label 2', 'mass']].iterrows():
+        pts.loc[connection['point label 1'], 'mass'] += connection["mass"] / 2
+        pts.loc[connection['point label 2'], 'mass'] += connection["mass"] / 2
+
+    gen_mass_node = tot_gen_mass / len(floor_nodes)
+    for point in floor_nodes:
+        pts.loc[point, 'mass'] += gen_mass_node
+
+    rotor_mass_node = tot_rotor_mass / len(rotor_mount_nodes)
+    for point in rotor_mount_nodes:
+        pts.loc[point, 'mass'] += rotor_mass_node
+
+    pt_distance = list(np.array((pts['x']-axis[0],pts['y']-axis[1],pts['z']-axis[2])).T)
+    pts = pts.assign(distance=pt_distance)
+    alpha = [0, 0, torque]
+    pts.loc[:, 'acc'] = [[0,0,0]] * len(pts)
+    for index, point in pts.iterrows():
+        # print(pts.loc[index, 'distance'])
+        pts.loc[index, 'acc'] = np.cross(alpha, point['distance'])
+
+    # for distance_vector in pt_distance:
+    #     acceleration = np.cross(alpha, distance_vector)
+    #     force =
+
+    # print(pt_distance)
+    # pts.assign(distance =[np.array([[pts['x']-axis[0]],[pts['y']-axis[1]],[pts['z']-axis[2]]])])
+    print(pts)
 
 
 def scale_cell(filename_cell: str, tot_width, tot_height, tot_depth, cell_columns, cell_rows):
@@ -242,3 +295,6 @@ def generate_structure(cell_filename: str, layers: int, columns: int, total_gen_
         add_load_to_row(full_structure_name, total_force=load, rownr=row, axis=axis, node_indicator=node_indicator)
 
     generate_numeric_bcs(cell_filename + ".num", newnodes, constrained_points)
+
+
+add_torque("2_not_j/structure1_fullstruct", 5,5,5,(0,15,0))

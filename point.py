@@ -33,6 +33,6 @@ def load_points_from_file(filename: str) -> list[Point]:
 
 def write_points_to_file(filename: str, points: list[Point]):
     with open(filename, 'w') as f:
-        f.write('point label, x, y, z, T\n')
+        f.write('point label,x,y,z,T\n')
         for point in points:
             f.write(f"{point.label},{str(point.x)},{str(point.y)},{str(point.z)},{str(point.t)}\n")
