@@ -39,4 +39,4 @@ def larger_profile(profile_label, fname):
 
 
 if __name__=='__main__':
-    generate_profiles(0.05, 2, 20, "2_not_j/structure1_fullstruct.pro")
+    generate_profiles(0.15, 2, 20, "2_not_j/structure1_fullstruct.pro")
