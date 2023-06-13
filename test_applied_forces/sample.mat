@@ -1,0 +1,7 @@
+material label,elastic modulus,density,strength,alpha
+steel,200E9,7.85E3,250E6,15E-6
+high_carbon_steel,200E9,7.8E3,433E6,0
+low_alloy_steel,200E9,7.8E3,469E6,0
+low_carbon_steel,200E9,7.8E3,255E6,0
+med_carbon_steel,200E9,7.8E3,376E6,0
+st_steel,190E9,7.61E3,252E6,0
