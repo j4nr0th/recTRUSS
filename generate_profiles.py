@@ -3,13 +3,12 @@ import pandas as pd
 import sigfig as sig
 
 
-def generate_profiles(min_radius, max_radius, steps, filename: str):
+def generate_profiles(min_radius, max_radius, steps, thickness_to_radius: float = 0.05, filename: str = 'bakfiets'):
     profiles = pd.DataFrame(columns=['radius', 'thickness'], index=[]).rename_axis('profile label')
     for r in np.geomspace(min_radius, max_radius, steps):
         radius = sig.round(r, sigfigs=2)
-        thickness_to_radius = 0.05
-        t = sig.round(thickness_to_radius * radius, sigfigs=2)
-        label = 'P' + str(radius).replace('.','')
+        t = sig.round(thickness_to_radius * radius, sigfigs=2, warn=False)
+        label = 'P' + str(radius).replace('.', '')
         if len(label) < 5:
             label += ''.join(['0'] * (5 - len(label)))
         profiles.loc[label] = [radius, t]
@@ -39,4 +38,6 @@ def larger_profile(profile_label, fname):
 
 
 if __name__=='__main__':
-    generate_profiles(0.15, 2, 20, "2_not_j/structure1_fullstruct.pro")
+    # generate_profiles(0.15, 2, 20, "2_not_j/structure1_fullstruct.pro"
+    generate_profiles(0.15, 2, 20, 0.015, "2_not_j/structure1_fullstruct.pro")
+

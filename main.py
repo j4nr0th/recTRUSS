@@ -2,15 +2,17 @@ from matplotlib import pyplot as plt
 import copy
 import numpy as np
 from element import elements_assemble
-from plotting import show_structure, show_deformed, show_forces, show_masses
+from plotting import show_structure, show_deformed, show_forces, show_masses, show_labels
 from point import Point, load_points_from_file
 from material import Material, load_materials_from_file
 from profile import Profile, load_profiles_from_file
 from connection import Connection, load_connections_from_file, write_connections_to_file
 from bcs import BoundaryCondition, load_natural_bcs, load_numerical_bcs
 from generate_profiles import smaller_profile, larger_profile
-from full_structure_generation import generate_structure, add_torque
+from full_structure_generation import generate_structure, add_torque, get_gen_rotor_nodes
 from mmoi_z import mmoi_structure, mmoi_drivetrain
+import sigfig as sig
+
 
 
 def compute_global_to_local_transform(dx: float, dy: float, dz: float) -> np.ndarray:
@@ -61,7 +63,7 @@ def save_displacements_to_file(filename: str, nodes: list["Point"], u: np.ndarra
                 f"{pt.label},{u[3 * i + 0]},{u[3 * i + 1]},{u[3 * i + 2]},{r[3 * i + 0]},{r[3 * i + 1]},{r[3 * i + 2]}\n")
 
 
-def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=True, printing=True, gravity=True, torque=False, **kwargs):
+def main(file_loc, drive_train_count, gen_mass, rotor_mass, optimizing=True, plotting=True, printing=True, gravity=True, torque=False, **kwargs):
 
     if optimizing:
         plotting = False
@@ -70,8 +72,8 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
     abs_plotting = False
     if 'abs_plotting' in kwargs:
         abs_plotting = True
-    #   Load bare data from files
 
+    #   Load bare data from files
     node_list = load_points_from_file(file_loc + ".pts")
     material_list = load_materials_from_file(file_loc.split('/')[0] + '/sample.mat')
 
@@ -86,19 +88,25 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
     x_vals = {point.x for point in node_list}
     structural_depth = abs(max(x_vals) - min(x_vals))
 
-    it_limit = len(profile_list) * 3
+    gen_locs, rotor_locs = get_gen_rotor_nodes(filename_full=file_loc)
+
+    it_limit = len(profile_list) * 2
     finished_optimizing = False
-    for i in range(it_limit):
+    for iteration in range(it_limit):
+        print('Iteration: ', iteration)
+
         connection_list = load_connections_from_file(connection_loc)
         old_connection_list = copy.deepcopy(connection_list)
         #   Assemble elements from nodes, materials, profiles, and connections
         elements = elements_assemble(connection_list, material_list, profile_list, node_list)
         n = len(node_list)
+
         n_dof = 3 * n
         MMOIz = []
-        if tot_dt_mass > 0 and total_rotor_mass > 0:
+        tot_dt_mass = gen_mass + rotor_mass
+        if tot_dt_mass > 0:
             MMOIz.append(mmoi_drivetrain(node_list, tot_dt_mass, drive_train_count))
-        approx_mmoiz = 0
+        # approx_mmoiz = 0
 
         if plotting:
             fig = show_structure(node_list, elements, numerical_bc_list, natural_bc_list)
@@ -151,6 +159,7 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
             # f_g[3 * e.node1: 3 * e.node1 + 3] += -d * F_thermal
 
             M_g[indices, indices] += mass / 2
+
             # M_e = mass / 6 * np.array(
             #     [[2, 0, 0, 1, 0, 0],
             #      [0, 2, 0, 0, 1, 0],
@@ -160,8 +169,8 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
             #      [0, 0, 1, 0, 0, 2]])
             # M_g[np.ix_(indices, indices)] += M_e
             MMOIz.append(mmoi_structure(n1, n2, p, mass, (structural_depth/2, 0., 0.)))
-            approx_mmoiz += mass / 2 * np.linalg.norm(((n1.x - structural_depth / 2), (n1.y - structural_depth / 2))) ** 2
-            approx_mmoiz += mass / 2 * np.linalg.norm(((n2.x - structural_depth / 2), (n2.y - structural_depth / 2))) ** 2
+            # approx_mmoiz += mass / 2 * np.linalg.norm(((n1.x - structural_depth / 2), (n1.y - structural_depth / 2))) ** 2
+            # approx_mmoiz += mass / 2 * np.linalg.norm(((n2.x - structural_depth / 2), (n2.y - structural_depth / 2))) ** 2
             #   Apply numerical BCs
 
         for i, bc in enumerate(numerical_bc_list):
@@ -187,11 +196,24 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
             if bc.z is not None:
                 f_g[3 * pt_index + 2] += bc.z
 
+        # Add drivetrain masses for the natural frequency,
+        # for now made this a copy so it doesnt affect the structural mass
+        # to be removed when for a general truss solver version
+        M_g_freq = copy.deepcopy(M_g)    
+        for i, node in enumerate(node_list):
+            if node.label in rotor_locs:
+                indices = (3 * i, 3 * i + 1, 3 * i + 2)
+                M_g_freq[indices, indices] += rotor_mass / len(rotor_locs)
+            if node.label in gen_locs:
+                indices = (3 * i, 3 * i + 1, 3 * i + 2)
+                M_g_freq[indices, indices] += gen_mass / len(gen_locs)
+
         #   Reduce the problem to only free DoFs
         K_r = K_g[np.ix_(free_dofs, free_dofs)]
         u_r = u_g[free_dofs]
         f_r = f_g[free_dofs]
-        M_r = M_g[np.ix_(free_dofs, free_dofs)]
+        # note that im using the copy with gen masses in here now 
+        M_r = M_g_freq[np.ix_(free_dofs, free_dofs)]
         assert np.all(u_r == 0)
         K_r_inv = np.linalg.inv(K_r)
         # u_r = np.linalg.solve(K_r, f_r)
@@ -199,8 +221,6 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
         u_g[free_dofs] = u_r
         r_g = K_g @ u_g - f_g
         eigenvalues = np.linalg.eigvals(K_r_inv @ M_r)
-        if printing:
-            print("Structural mass is:", np.sum(M_g) / 3)
 
         #   Postprocessing
         for i, n in enumerate(node_list):
@@ -253,7 +273,7 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
             if abs(F_e / F_lim) > 1:
                 connection_list[i].profile = larger_profile(connection_list[i].profile, profile_loc)
                 # print(f'changed {old_connection_list[i].profile} to {connection_list[i].profile}')
-            if abs(F_e / F_lim) < 0.5:
+            if abs(F_e / F_lim) < 0.5 and iteration < it_limit * 2 / 3:
                 connection_list[i].profile = smaller_profile(connection_list[i].profile, profile_loc)
                 # print(f'changed {old_connection_list[i].profile} to {connection_list[i].profile}')
 
@@ -287,38 +307,104 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
             fig.suptitle("Structural stresses")
             plt.show()
 
-            fig = show_masses(node_list, elements, material_list, profile_list)
-            fig.suptitle("Mass distribution")
+            fig = show_labels(node_list, elements, material_list, profile_list)
+            fig.suptitle("Profile distribution")
             plt.show()
 
         if not optimizing or finished_optimizing:
             break
-
     return np.sum(M_g) / 3, sorted(freq)
+
+
+# def get_main_inputs():
+#     cell_file_name = "2_not_j/structure1"
+#
+#     file_loc = cell_file_name + "_fullstruct"
+#     optimizing = True
+#     # WHEN ANY OF THESE ARE CHANGED, IT HAS TO BE REOPTIMIZED OR THE NEW FORCES WONT BE APPLIED
+#
+#     # Dimensions
+#     total_height, total_width, total_depth = 280, 280, 32
+#     cell_rows, cell_columns = 6, 3
+#
+#     # Rotor shit for natural frequency
+#     rotors_per_cell = 2
+#     rotor_diameter = total_width / 2 / cell_columns / rotors_per_cell
+#     TSR, v_rated = 4.5, 11.2
+#     rotor_frequency = (TSR * v_rated) / (rotor_diameter * np.pi)
+#     print("Rotor frequency:", rotor_frequency)
+#
+#     # Applied forces FOR HALF THE STRUCTURE!!!
+#     total_thrust_rotors = 8.53E6 / 2 / 2 * 11.2 ** 2 / 15 ** 2
+#     gen_count = rotors_per_cell * cell_columns
+#     total_generator_mass = 60E3 * 6
+#     # 30 tons rotors + 136 tons per shaft
+#     total_rotor_mass = 300E3 / 9.81 + 136E3 * cell_columns * rotors_per_cell
+#     # Torque 3MN due to electric motor
+#     # time_to_turn_90 = 60 * 60
+#     # angular_acc = 0.5 * np.pi / time_to_turn_90 ** 2
+#     torque = 0  # 3E6
+#     I_z_estimate = 150E9
+#     angular_acc = torque / I_z_estimate
+#
+#     # storm conditions : 0 MN * 4 in downforce, 1.6E MN per cell thrust
+#     # HLD operational 0.778E6 * (cell_rows - skipped_rows) * cell_columns
+#     skipped_rows = 2
+#     total_HLD_downforce = 0.778E6 * (cell_rows - skipped_rows) * cell_columns
+#     total_HLD_thrust = total_HLD_downforce * 0.25
+#
+#     constrained_points = ('A0000', 'B0000', 'A0004', 'B0004')
+#     # constrained_points = ('A0100', 'A0300', 'B0100', 'B0300')
+#
+#     HLD_rows = cell_rows - skipped_rows + 1
+#     additional_loads = [(i, 'B', 'x', -total_HLD_thrust / HLD_rows) for i in
+#                         range(skipped_rows, HLD_rows + skipped_rows)]
+#     additional_loads += [(i, 'B', 'z', -total_HLD_downforce / HLD_rows) for i in
+#                          range(skipped_rows, HLD_rows + skipped_rows)]
 
 
 if __name__ == '__main__':
     cell_file_name = "2_not_j/structure1"
 
     file_loc = cell_file_name + "_fullstruct"
-    optimizing = False
-
+    optimizing = True
     # WHEN ANY OF THESE ARE CHANGED, IT HAS TO BE REOPTIMIZED OR THE NEW FORCES WONT BE APPLIED
-    total_height, total_width, total_depth = 280, 280, 33
+
+    # Dimensions
+    total_height, total_width = 280, 280
+    total_depth = 0.1275 * total_width
     cell_rows, cell_columns = 6, 3
-    # note these are currently not scaling with the height and width of the structure
-    total_thrust_rotors = 8.53E6/2/2
-    rotors_per_cell = 2
+
+    # Rotor shit for natural frequency
+    # todo: changing this doesnt change the thrust and mass of the rotors
+    rotors_per_cell = 1
+    rotor_diameter = total_width / 2 / cell_columns / rotors_per_cell
+    TSR, v_rated = 4.5, 11.2
+    rotor_frequency = (TSR * v_rated) / (rotor_diameter * np.pi)
+    wave_frequency = 0.2
+    print("Rotor frequency:", rotor_frequency)
+
+    # Applied forces FOR HALF THE STRUCTURE
+    total_thrust_rotors = 8.53E6 / 2 / 2 * 11.2**2 / 15**2 * 5
     gen_count = rotors_per_cell * cell_columns
-    total_generator_mass = 13E3 * 12
-    total_rotor_mass = 300E3 / 9.81
-    time_to_turn_90 = 60
-    angular_acc = 0.5 * np.pi / time_to_turn_90 ** 2
+    total_generator_mass = 60E3 * 6
+    # 30 tons rotors + 136 tons per shaft
+    total_rotor_mass = 300E3 / 9.81 + 136E3 * cell_columns * 2  # from 136E3 go to *2.5
+    # Torque 3MN due to electric motor
+    # time_to_turn_90 = 60 * 60
+    # angular_acc = 0.5 * np.pi / time_to_turn_90 ** 2
+    torque = 0  # 3E6
+    I_z_estimate = 150E9
+    angular_acc = torque / I_z_estimate
+
     # storm conditions : 0 MN * 4 in downforce, 1.6E MN per cell thrust
     # HLD operational 0.778E6 * (cell_rows - skipped_rows) * cell_columns
     skipped_rows = 2
     total_HLD_downforce = 0.778E6 * (cell_rows - skipped_rows) * cell_columns
     total_HLD_thrust = total_HLD_downforce * 0.25
+
+    constrained_points = ('A0000', 'B0000', 'A0003', 'B0003')
+    # constrained_points = ('A0100', 'A0300', 'B0100', 'B0300')
 
     HLD_rows = cell_rows - skipped_rows + 1
     additional_loads = [(i, 'B', 'x', -total_HLD_thrust/HLD_rows) for i in range(skipped_rows, HLD_rows + skipped_rows)]
@@ -329,33 +415,50 @@ if __name__ == '__main__':
             generate_structure(cell_file_name, layers=cell_rows, columns=cell_columns,
                                total_rotor_thrust=total_thrust_rotors, total_gen_mass=total_generator_mass,
                                total_rotor_mass=total_rotor_mass, additional_loads=additional_loads,
-                               height=total_height, width=total_width, depth=total_depth)
+                               height=total_height, width=total_width, depth=total_depth,
+                               constrained_points=constrained_points)
 
-            it_limit = 50
+            it_limit = 20
             for j in range(it_limit):
                 print(j)
                 add_torque(filename_full=file_loc, ang_acc=angular_acc,
                            tot_gen_mass=total_generator_mass, tot_rotor_mass=total_rotor_mass,
                            axis=(total_depth / 2, 0, 0))
-                main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass,
+                main(file_loc, drive_train_count=gen_count, gen_mass=total_generator_mass, rotor_mass=total_rotor_mass,
                      optimizing=True, torque=True)
 
-            mass, freq = main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False, torque=True)
+            mass, freq = main(file_loc, drive_train_count=gen_count, gen_mass=total_generator_mass, rotor_mass=total_rotor_mass, optimizing=False, torque=True)
 
         else:
             generate_structure(cell_file_name, layers=cell_rows, columns=cell_columns,
                                total_rotor_thrust=total_thrust_rotors, total_gen_mass=total_generator_mass,
                                total_rotor_mass=total_rotor_mass, additional_loads=additional_loads,
-                               height=total_height, width=total_width, depth=total_depth)
-            main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=True)
-            mass, freq = main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False)
+                               height=total_height, width=total_width, depth=total_depth,
+                               constrained_points=constrained_points)
+            main(file_loc, drive_train_count=gen_count, gen_mass=total_generator_mass, rotor_mass=total_rotor_mass, optimizing=True)
+            mass, freq = main(file_loc, drive_train_count=gen_count, gen_mass=total_generator_mass, rotor_mass=total_rotor_mass, optimizing=False)
 
     else:
         if angular_acc != 0:
-            mass, freq = main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False, torque=True)
+            mass, freq = main(file_loc, drive_train_count=gen_count, gen_mass=total_generator_mass, rotor_mass=total_rotor_mass, optimizing=False, torque=True)
         else:
-            mass, freq = main(file_loc, drive_train_count=gen_count, tot_dt_mass=total_generator_mass + total_rotor_mass, optimizing=False)
+            mass, freq = main(file_loc, drive_train_count=gen_count, gen_mass=total_generator_mass, rotor_mass=total_rotor_mass, optimizing=False)
 
-    with open(file_loc + ".results", 'a') as f:
-        f.write(f"{cell_file_name},{mass},{cell_rows},{cell_columns*2},{total_width},{total_height},{total_depth}"
-                f",{freq[0]},{freq[1]},{freq[2]}\n")
+    if optimizing:
+        with open(file_loc + ".results", 'a') as f:
+            f.write(f"{cell_file_name},{round(mass, 0)},{cell_rows},{cell_columns*2},{total_width},{total_height},{total_depth}"
+                    f",{sig.round(freq[0], 3)},{sig.round(freq[1], 3)},{sig.round(freq[2], 3)}\n")
+    print('Number of eigenfrequencies:', len(freq))
+    freq2, freq3 = np.array(freq) * 2, np.array(freq) * 3
+    all_frequency = np.array(list(freq) + list(freq2) + list(freq3))
+    widths = all_frequency * 0.1
+    plt.bar(all_frequency, [1] * len(all_frequency), width=widths, alpha=0.3)
+    plt.bar(rotor_frequency,1,width=0.1*rotor_frequency, color='red', alpha=0.5)
+    plt.bar(wave_frequency,1,width=0.1*wave_frequency, color='red', alpha=0.5)
+    plt.xlabel("Frequency [Hz] (red = excitation, blue = natural frequency)")
+    # plt.bar(rotor_frequency*2,1,width=0.1*rotor_frequency*2, color='orange', alpha=0.5)
+    # plt.bar(wave_frequency*2,1,width=0.1*wave_frequency*2, color='orange', alpha=0.5)
+
+    plt.xlim(0, 3*rotor_frequency)
+    plt.ylim(0,1)
+    plt.show()

@@ -239,3 +239,62 @@ def show_masses(pts: list[Point], elements: list[Element], material_list: list[M
     ax.set_aspect("equal")
 
     return fig
+
+
+def show_labels(pts: list[Point], elements: list[Element], material_list: list[Material],
+                profile_list: list[Profile], **kwargs) -> plt.Figure:
+    #   Set colors and sizes
+    line_style = None
+    if "line_style" in kwargs:
+        line_style = kwargs["line_style"]
+    colormap_name = "jet"
+    if "colormap_name" in kwargs:
+        colormap_name = kwargs["colormap_name"]
+    node_color = "black"
+    if "node_color" in kwargs:
+        node_color = kwargs["node_color"]
+
+    fig: plt.Figure = plt.figure()
+    ax: plt.Axes = fig.add_subplot(111, projection="3d")
+
+    masses = [material_list[element.material].rho *
+              np.pi * (profile_list[element.profile].r ** 2 - (profile_list[element.profile].r - profile_list[element.profile].t) ** 2)
+              for element in elements]
+
+    colormap: matplotlib.colors.Colormap = cm.get_cmap(colormap_name)
+    max_mass = np.max(np.abs(masses))
+
+    color_scalar_map = plt.cm.ScalarMappable(plt.Normalize(0, max_mass), colormap)
+
+    x_list = np.zeros(len(pts))
+    y_list = np.zeros(len(pts))
+    z_list = np.zeros(len(pts))
+    #   properly set up the coordinates
+    for i, p in enumerate(pts):
+        x_list[i] = p.x
+        y_list[i] = p.y
+        z_list[i] = p.z
+
+    #   draw the points
+    ax.scatter(x_list, y_list, zs=z_list, color=node_color)
+    #   now process the elements
+    lines = []
+    for i, e in enumerate(elements):
+        n1 = pts[e.node1]
+        n2 = pts[e.node2]
+        color = color_scalar_map.to_rgba(masses[i])
+        line = ax.plot(xs=[n1.x, n2.x], ys=[n1.y, n2.y], zs=[n1.z, n2.z], color=color, linestyle=line_style)
+        halfwaypoint = [n1.x + (n2.x - n1.x)/2, n1.y + (n2.y - n1.y)/2, n1.z + (n2.z - n1.z)/2]
+        ax.text(*halfwaypoint, s=profile_list[e.profile].label, size=8, zorder=1)
+        lines.append(*line)
+
+    # for i, p in enumerate(pts):
+    #     x_list[i] = p.x
+    #     y_list[i] = p.y
+    #     z_list[i] = p.z
+    #     ax.text(p.x + 0.1, p.y + 0.1, p.z + 0.1, p.profile, size=8, zorder=1, color="k")
+
+    plt.colorbar(color_scalar_map)
+    ax.set_aspect("equal")
+
+    return fig

@@ -113,11 +113,10 @@ def add_rotor_thrust(filename_full: str, total_thrust: float):
     """
     Forgive me for committing copy paste badness im lazy
     """
-    pts = pd.read_csv(filename_full + ".pts", index_col=0).index
-    non_floor_points_front = {point for point in pts if int(point[3:]) != '0' and point[0] == 'A'}
-    rotor_thrust = total_thrust / len(non_floor_points_front)
+    rotor_points = get_gen_rotor_nodes(filename_full)[1]
+    rotor_thrust = total_thrust / len(rotor_points)
     bcs = pd.read_csv(filename_full + '.nat', index_col=0)
-    for pt in non_floor_points_front:
+    for pt in rotor_points:
         if pt in bcs.index:
             bcs.loc[pt]['Fx'] -= rotor_thrust
         else:
@@ -125,22 +124,29 @@ def add_rotor_thrust(filename_full: str, total_thrust: float):
     bcs.to_csv(filename_full + '.nat')
 
 
-def add_drivetrain_load(filename_full: str, generator_mass, rotor_mass):
+def get_gen_rotor_nodes(filename_full: str):
     pts = pd.read_csv(filename_full + ".pts", index_col=0).index
-    floor_points = {point for point in pts if point[-1] == '0'}
-    non_floor_front_points = {point for point in pts if int(point[3:]) != '0' and point[0] == 'A'}
-    gen_load = generator_mass * 9.81 / len(floor_points)
-    rotor_load = rotor_mass * 9.81 / len(non_floor_front_points)
+    # gens at bottom nodes - rotors at front non bottom nodes
+    gen_locs = {point for point in pts if int(point[3:]) == 0}
+    rotor_locs = {point for point in pts if int(point[3:]) != 0 and point[0] == 'A'}
+    return gen_locs, rotor_locs
 
+
+def add_drivetrain_load(filename_full: str, generator_mass, rotor_mass):
+    gen_points, rotor_points = get_gen_rotor_nodes(filename_full)
+    gen_load = generator_mass * 9.81 / len(gen_points)
+    rotor_load = rotor_mass * 9.81 / len(rotor_points)
+
+    pts = pd.read_csv(filename_full + ".pts", index_col=0).index
     bcs = pd.read_csv(filename_full + '.nat', index_col=0)
     for point in pts:
-        if point in floor_points:
+        if point in gen_points:
             if point in bcs.index:
                 bcs.loc[point]['Fz'] -= gen_load
             else:
                 bcs.loc[point] = [0,0,-gen_load]
 
-        if point in non_floor_front_points:
+        if point in rotor_points:
             if point in bcs.index:
                 bcs.loc[point]['Fz'] -= rotor_load
             else:
@@ -281,7 +287,6 @@ def generate_structure(cell_filename: str, layers: int, columns: int, total_gen_
     newnodes, newconnections = copy_nodes(node_list, connection_list, layers=layers, columns=columns)
     write_points_to_file(full_structure_name + ".pts", newnodes)
     write_connections_to_file(full_structure_name + ".con", newconnections)
-
 
     new_bc_nat_loc = full_structure_name + '.nat'
     with open(new_bc_nat_loc, 'w') as f:
