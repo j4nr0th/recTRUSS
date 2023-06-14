@@ -18,16 +18,15 @@ def get_depth_ratio_mass(depth_ratios, nat_freqs):
         cell_rows, cell_columns = 6, 3
 
         # Rotor shit for natural frequency
-        rotors_per_cell = 2
-        rotor_diameter = total_width / 2 / cell_columns / rotors_per_cell
+        rotors_per_cell = 1
+        rotor_diameter = 45
         TSR, v_rated = 4.5, 11.2
         rotor_frequency = (TSR * v_rated) / (rotor_diameter * np.pi)
-        print("Rotor frequency:", rotor_frequency)
 
         # Applied forces FOR HALF THE STRUCTURE!!!
-        total_thrust_rotors = 8.53E6 / 2 / 2 * 11.2 ** 2 / 15 ** 2
+        total_thrust_rotors = 9.95E6
         gen_count = rotors_per_cell * cell_columns
-        total_generator_mass = 60E3 * 6
+        total_generator_mass = 150E3 * 3
         # 30 tons rotors + 136 tons per shaft
         total_rotor_mass = 300E3 / 9.81 + 136E3 * cell_columns * rotors_per_cell
         # Torque 3MN due to electric motor
