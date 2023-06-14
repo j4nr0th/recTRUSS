@@ -381,7 +381,7 @@ if __name__ == '__main__':
 
     # Dimensions
     total_height, total_width = 280, 280
-    total_depth = 0.1275 * total_width
+    total_depth = 25
     cell_rows, cell_columns = 6, 3
 
     # Rotor shit for natural frequency
@@ -394,22 +394,22 @@ if __name__ == '__main__':
     print("Rotor frequency:", rotor_frequency)
 
     # Applied forces FOR HALF THE STRUCTURE
-    total_thrust_rotors = 8.53E6 / 2 / 2 * 11.2**2 / 15**2 * 5
+    total_thrust_rotors = 4.21E6 / 2
     gen_count = rotors_per_cell * cell_columns
-    total_generator_mass = 60E3 * 6
+    total_generator_mass = 150E3 * 3
     # 30 tons rotors + 136 tons per shaft
-    total_rotor_mass = 300E3 / 9.81 + 136E3 * cell_columns * 2  # from 136E3 go to * 2.5
+    total_rotor_mass = 300E3 / 9.81 + 136E3 * cell_columns * 2
     # Torque 3MN due to electric motor
     # time_to_turn_90 = 60 * 60
     # angular_acc = 0.5 * np.pi / time_to_turn_90 ** 2
     torque = 0  # 3E6
-    I_z_estimate = 150E9
+    I_z_estimate = 48E9
     angular_acc = torque / I_z_estimate
 
     # HLD operational 0.778E6 * (cell_rows - skipped_rows) * cell_columns
     skipped_rows = 2
-    total_HLD_downforce = 0.778E6 * (cell_rows - skipped_rows) * cell_columns
-    total_HLD_thrust = total_HLD_downforce * 0.25
+    total_HLD_downforce = 1.24509E6 / 2
+    total_HLD_thrust = 0.25556E6 / 2
 
     # for storm:
     # total_HLD_downforce = 0

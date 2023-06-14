@@ -88,3 +88,5 @@ cell file name,mass,total cell rows,total cell columns,total width,total height,
 2_not_j/structure1,2511641.0,6,6,280,280,35.7,0.366,0.545,0.665,low_carbon
 2_not_j/structure1,2278340.0,6,6,280,280,35.7,0.302,0.473,0.561,med_carbon
 2_not_j/structure1,2268645.0,6,6,280,280,35.7,0.295,0.453,0.553,high_carbon
+2_not_j/structure1,1858397.0,6,6,280,280,25,0.24,0.397,0.574
+2_not_j/structure1,1858397.0,6,6,280,280,25,0.24,0.397,0.574
