@@ -33,8 +33,8 @@ def find_E_solution(xe):
     Fc = (np.sqrt((xe[0] - c.x) ** 2 + (xe[1] - c.y) ** 2 + (xe[2] - c.z) ** 2) - Lc) * E * Ac / Lc
     Fd = (np.sqrt((xe[0] - d.x) ** 2 + (xe[1] - d.y) ** 2 + (xe[2] - d.z) ** 2) - Ld) * E * Ad / Ld
 
-    return np.array([-Fa / La - Fb / Lb + 3* Fc / Lc + 3 * Fd / Ld,
-                -Fa / La - 3 * Fb / Lb + Fc / Lc + 3 * Fd / Ld,
+    return np.array([-Fa / La + 3 * Fb / Lb - 1 * Fc / Lc + 3 * Fd / Ld,
+                -Fa / La - 1 * Fb / Lb + 3 * Fc / Lc + 3 * Fd / Ld,
                 F - Fa / La - Fb / Lb - Fc / Lc - Fd / Ld])
 
 def find_analytical_sol():

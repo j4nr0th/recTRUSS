@@ -31,8 +31,8 @@ class MyTestCase(unittest.TestCase):
         Fc = (np.sqrt((xe[0] - self.c.x) ** 2 + (xe[1] - self.c.y) ** 2 + (xe[2] - self.c.z) ** 2) - self.Lc) * self.E * self.Ac / self.Lc
         Fd = (np.sqrt((xe[0] - self.d.x) ** 2 + (xe[1] - self.d.y) ** 2 + (xe[2] - self.d.z) ** 2) - self.Ld) * self.E * self.Ad / self.Ld
 
-        return np.array([-Fa / self.La - Fb / self.Lb + 3 * Fc / self.Lc + 3 * Fd / self.Ld,
-                -Fa / self.La - 3 * Fb / self.Lb + Fc / self.Lc + 3 * Fd / self.Ld,
+        return np.array([-Fa / self.La + 3 * Fb / self.Lb - 1 * Fc / self.Lc + 3 * Fd / self.Ld,
+                -Fa / self.La - 1 * Fb / self.Lb + 3 * Fc / self.Lc + 3 * Fd / self.Ld,
                 self.F - Fa / self.La - Fb / self.Lb - Fc / self.Lc - Fd / self.Ld])
 
     def find_analytical_sol(self):
@@ -48,5 +48,4 @@ class MyTestCase(unittest.TestCase):
     def test_pyramid(self):
         stresses = main(self.test_files, 0, 0, optimizing=False, printing=False, plotting=False, gravity=False)
         analytical_stress = np.array(self.find_analytical_sol()) / np.array([self.Aa, self.Ab, self.Ac, self.Ad])
-        assert (stresses == analytical_stress).all() #< 1E-9).all()
-        # assert np.isclose(stresses, analytical_stress).all()
+        assert np.isclose(stresses, analytical_stress).all()
