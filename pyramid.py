@@ -11,7 +11,7 @@ from profile import load_profiles_from_file
 
 
 test_files = 'tests/structure1'
-F = float(pd.read_csv(test_files + '.nat')['Fz'])
+F = pd.read_csv(test_files + '.nat')['Fz'][0].astype(float)
 
 points = load_points_from_file(test_files + '.pts')
 E = load_materials_from_file('tests/sample.mat')[0].E
@@ -33,9 +33,9 @@ def find_E_solution(xe):
     Fc = (np.sqrt((xe[0] - c.x) ** 2 + (xe[1] - c.y) ** 2 + (xe[2] - c.z) ** 2) - Lc) * E * Ac / Lc
     Fd = (np.sqrt((xe[0] - d.x) ** 2 + (xe[1] - d.y) ** 2 + (xe[2] - d.z) ** 2) - Ld) * E * Ad / Ld
 
-    return [-Fa * 3 / La + Fb / Lb + Fc / Lc - 3 * Fd / Ld,
-            -Fa / La - Fb / Lb + 3 * Fc / Lc + 3 * Fd / Ld,
-            F + Fa / La + Fb/ Lb + Fc / Lc + Fd / Ld]
+    return np.array([-Fa / La - Fb / Lb + 3* Fc / Lc + 3 * Fd / Ld,
+                -Fa / La - 3 * Fb / Lb + Fc / Lc + 3 * Fd / Ld,
+                F - Fa / La - Fb / Lb - Fc / Lc - Fd / Ld])
 
 def find_analytical_sol():
     xe = fsolve(find_E_solution, x0=np.array([3,1,1]))

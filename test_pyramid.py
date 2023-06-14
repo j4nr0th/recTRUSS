@@ -31,12 +31,12 @@ class MyTestCase(unittest.TestCase):
         Fc = (np.sqrt((xe[0] - self.c.x) ** 2 + (xe[1] - self.c.y) ** 2 + (xe[2] - self.c.z) ** 2) - self.Lc) * self.E * self.Ac / self.Lc
         Fd = (np.sqrt((xe[0] - self.d.x) ** 2 + (xe[1] - self.d.y) ** 2 + (xe[2] - self.d.z) ** 2) - self.Ld) * self.E * self.Ad / self.Ld
 
-        return np.array([-Fa * 3 / self.La + Fb / self.Lb + Fc / self.Lc - 3 * Fd / self.Ld,
-                -Fa / self.La - Fb / self.Lb + 3 * Fc / self.Lc + 3 * Fd / self.Ld,
-                -self.F + Fa / self.La + Fb / self.Lb + Fc / self.Lc + Fd / self.Ld])
+        return np.array([-Fa / self.La - Fb / self.Lb + 3 * Fc / self.Lc + 3 * Fd / self.Ld,
+                -Fa / self.La - 3 * Fb / self.Lb + Fc / self.Lc + 3 * Fd / self.Ld,
+                self.F - Fa / self.La - Fb / self.Lb - Fc / self.Lc - Fd / self.Ld])
 
     def find_analytical_sol(self):
-        xe = fsolve(self.find_E_solution, x0=np.array([3, 1, 1]), xtol=sys.float_info.epsilon * 100)
+        xe = fsolve(self.find_E_solution, x0=np.array([1, 1, 1]), xtol=sys.float_info.epsilon * 100)
         assert np.isclose(self.find_E_solution(xe), np.array([0,0,0])).all()
         Fa = (np.sqrt((xe[0] - self.a.x) ** 2 + (xe[1] - self.a.y) ** 2 + (xe[2] - self.a.z) ** 2) - self.La) * self.E * self.Aa / self.La
         Fb = (np.sqrt((xe[0] - self.b.x) ** 2 + (xe[1] - self.b.y) ** 2 + (xe[2] - self.b.z) ** 2) - self.Lb) * self.E * self.Ab / self.Lb
@@ -48,4 +48,5 @@ class MyTestCase(unittest.TestCase):
     def test_pyramid(self):
         stresses = main(self.test_files, 0, 0, optimizing=False, printing=False, plotting=False, gravity=False)
         analytical_stress = np.array(self.find_analytical_sol()) / np.array([self.Aa, self.Ab, self.Ac, self.Ad])
-        assert np.isclose(stresses, analytical_stress).all()
+        assert (stresses == analytical_stress).all() #< 1E-9).all()
+        # assert np.isclose(stresses, analytical_stress).all()
