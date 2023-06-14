@@ -284,7 +284,7 @@ def main(file_loc, drive_train_count, tot_dt_mass, optimizing=True, plotting=Tru
             fig.suptitle("Mass distribution")
             plt.show()
 
-    return force_array
+    return force_array, u_g
 
 if __name__ == '__main__':
     cell_file_name = '7_the_ultra_Jemiol_frontmounter/structure1'

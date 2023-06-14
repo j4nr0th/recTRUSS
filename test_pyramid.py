@@ -45,7 +45,17 @@ class MyTestCase(unittest.TestCase):
         return Fa, Fb, Fc, Fd
 
 
-    def test_pyramid(self):
-        stresses = main(self.test_files, 0, 0, optimizing=False, printing=False, plotting=False, gravity=False)
+    def test_pyramid_force(self):
+        stresses = main(self.test_files, 0, 0, optimizing=False, printing=False, plotting=False, gravity=False)[0]
         analytical_stress = np.array(self.find_analytical_sol()) / np.array([self.Aa, self.Ab, self.Ac, self.Ad])
         assert np.isclose(stresses, analytical_stress).all()
+        # assert (abs(stresses - analytical_stress)/abs(stresses) == 0).all()
+
+
+    def test_pyramid_displacement(self):
+        xe = fsolve(self.find_E_solution, x0=np.array([1, 1, 1]), xtol=sys.float_info.epsilon * 100)
+        ux, uy, uz = xe[0] - self.e.x, xe[1] - self.e.y, xe[2] - self.e.z
+
+        e_displacements = main(self.test_files, 0, 0, optimizing=False, printing=False, plotting=False, gravity=False)[1][-3:]
+        # diff = np.array([[ux], [uy], [uz]]) - e_displacements
+        assert (abs(np.array([[ux], [uy], [uz]]) - e_displacements)/abs(e_displacements) < 10E-5).all()
