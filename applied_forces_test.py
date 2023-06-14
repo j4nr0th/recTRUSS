@@ -21,4 +21,4 @@ def test_applied_forces():
 
     forces = pd.read_csv(cell_file_name + "_fullstruct.nat", index_col=0)
     forces = forces.astype(float)
-    assert abs(forces.sum()).sum() - (total_thrust_rotors + total_generator_mass * 9.81 + total_rotor_mass * 9.81 + 3E3 + 500) <= 10E-10
+    assert abs(forces.sum()).sum() - (total_thrust_rotors + total_generator_mass * 9.81 + total_rotor_mass * 9.81 + 3E3 + 500) <= 1E-10

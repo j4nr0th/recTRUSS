@@ -29,9 +29,12 @@ def mmoi_structure(node1: Point, node2: Point, profile: Profile, mass: float, ax
     return mmoi
 
 
-def mmoi_drivetrain(pts: list[Point], tot_dt_mass, drivetrain_count):
+def mmoi_drivetrain(pts: list[Point], tot_dt_mass, drivetrain_count, column_count):
     max_y = max([point.y for point in pts])
-    genspacing = max_y / drivetrain_count
-    mmoi = tot_dt_mass / drivetrain_count * sum((i * genspacing) ** 2 for i in np.linspace(0, max_y, drivetrain_count))
+    column_width = max_y / column_count
+    rotors_per_column = drivetrain_count / column_count
+    rotor_diameter = column_width / rotors_per_column
+    drivetrain_locations = np.arange(rotor_diameter/2, max_y - rotor_diameter /2 + 1, rotor_diameter)
+    mmoi = (tot_dt_mass / drivetrain_count) * np.sum(drivetrain_locations ** 2)
     return mmoi
 
