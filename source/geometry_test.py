@@ -1,6 +1,8 @@
 import unittest
-from main import compute_global_to_local_transform, compute_element_stiffness_matrix
+
 import numpy as np
+
+from main import compute_global_to_local_transform, compute_element_stiffness_matrix
 
 
 class MyTestCase(unittest.TestCase):

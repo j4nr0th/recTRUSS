@@ -1,12 +1,13 @@
-import pandas as pd
 from dataclasses import dataclass
+
+import pandas as pd
 
 
 @dataclass
 class Connection:
     label: str;
-    node1: str;
-    node2: str;
+    point1: str;
+    point2: str;
     material: str;
     profile: str
 

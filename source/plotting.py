@@ -51,11 +51,11 @@ def show_structure(pts: list[Point], elements: list[Element], num: list[Boundary
     #   count Degrees of Freedom
     for i, bc, in enumerate(num):
         if bc.x is not None:
-            dof_list[bc.node] -= 1;
+            dof_list[bc.point] -= 1;
         if bc.y is not None:
-            dof_list[bc.node] -= 1;
+            dof_list[bc.point] -= 1;
         if bc.z is not None:
-            dof_list[bc.node] -= 1;
+            dof_list[bc.point] -= 1;
 
     colors = [dof3_color] * len(pts)
 
@@ -69,8 +69,8 @@ def show_structure(pts: list[Point], elements: list[Element], num: list[Boundary
     max_len: float = 0
     #   now process the elements
     for i, e in enumerate(elements):
-        n1 = pts[e.node1]
-        n2 = pts[e.node2]
+        n1 = pts[e.point1]
+        n2 = pts[e.point2]
         length = np.hypot(np.hypot(n1.x - n2.x, n1.y - n2.y), n1.z - n2.z)
         if length > max_len:
             max_len = float(length)
@@ -89,14 +89,14 @@ def show_structure(pts: list[Point], elements: list[Element], num: list[Boundary
             m = np.linalg.norm(F)
             lengths[i] = m
             directions[i, :] = F / m
-            n = pts[bc.node]
+            n = pts[bc.point]
             x_list[i] = n.x;
             y_list[i] = n.y;
             z_list[i] = n.z;
 
         lengths *= f_len / np.max(lengths) * max_len
         # for i, bc, in enumerate(nat):
-        #    n = pts[bc.node]
+        #    n = pts[bc.point]
         #    v = lengths[i] * directions[i]
         #    arrow = Arrow3D(n.x, n.y, n.z, v[0], v[1], v[2])
         #    ax.add_artist(arrow)
@@ -123,14 +123,14 @@ def show_deformed(ax: plt.Axes, u: np.ndarray, pts: list[Point], elements: list[
     max_len = 0
     #   now process the elements
     for i, e in enumerate(elements):
-        n1 = pts[e.node1]
-        n2 = pts[e.node2]
-        x1 = n1.x + u[3 * e.node1 + 0]
-        y1 = n1.y + u[3 * e.node1 + 1]
-        z1 = n1.z + u[3 * e.node1 + 2]
-        x2 = n2.x + u[3 * e.node2 + 0]
-        y2 = n2.y + u[3 * e.node2 + 1]
-        z2 = n2.z + u[3 * e.node2 + 2]
+        n1 = pts[e.point1]
+        n2 = pts[e.point2]
+        x1 = n1.x + u[3 * e.point1 + 0]
+        y1 = n1.y + u[3 * e.point1 + 1]
+        z1 = n1.z + u[3 * e.point1 + 2]
+        x2 = n2.x + u[3 * e.point2 + 0]
+        y2 = n2.y + u[3 * e.point2 + 1]
+        z2 = n2.z + u[3 * e.point2 + 2]
         length = np.hypot(np.hypot(x1 - x2, y1 - y2), z1 - z2)
         if length > max_len:
             max_len = length
@@ -170,13 +170,13 @@ def show_forces(pts: list[Point], elements: list[Element], forces: np.ndarray, *
     #   now process the elements
     lines = []
     for i, e in enumerate(elements):
-        n1 = pts[e.node1]
-        n2 = pts[e.node2]
+        n1 = pts[e.point1]
+        n2 = pts[e.point2]
         color = color_scalar_map.to_rgba(forces[i])
         line = ax.plot(xs=[n1.x, n2.x], ys=[n1.y, n2.y], zs=[n1.z, n2.z], color=color, linestyle=line_style)
         lines.append(*line)
 
-    plt.colorbar(color_scalar_map)
+    plt.colorbar(color_scalar_map, label=r"$\sigma$")
     ax.set_aspect("equal")
 
     return fig
