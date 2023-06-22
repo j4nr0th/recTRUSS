@@ -1,0 +1,17 @@
+points="simplest/sample.pts"
+materials="simplest/sample.mat"
+natural_bcs="simplest/sample.nat"
+numerical_bcs="simplest/sample.num"
+profiles="simplest/sample.pro"
+elements="simplest/sample.con"
+silent=false
+gravity=9.81
+show_unsolved=true
+show_deformed=true
+deformation_scale=100
+show_stresses=true
+node_output_destination="some_file.csv"
+element_output_destination="another_file.csv"
+general_output_destination="misc.txt"
+save_figs=true
+fig_folder="."
