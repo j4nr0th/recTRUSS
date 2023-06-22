@@ -1,9 +1,9 @@
-points="simplest/sample.pts"
-materials="simplest/sample.mat"
-natural_bcs="simplest/sample.nat"
-numerical_bcs="simplest/sample.num"
-profiles="simplest/sample.pro"
-elements="simplest/sample.con"
+points="example/points_structure1_fullstruct.csv"
+materials="example/material_sample.csv"
+natural_bcs="example/natural_structure1_fullstruct.csv"
+numerical_bcs="example/numerical_structure1_fullstruct.csv"
+profiles="example/profiles_structure1_fullstruct.csv"
+elements="example/elements_structure1_fullstruct.csv"
 silent=false
 gravity=9.81
 show_unsolved=true

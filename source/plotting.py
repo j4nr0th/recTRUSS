@@ -149,13 +149,17 @@ def show_forces(pts: list[Point], elements: list[Element], forces: np.ndarray, *
     node_color = "black"
     if "node_color" in kwargs:
         node_color = kwargs["node_color"]
-
+    abs_plotting = True
+    if "abs_plotting" in kwargs:
+        abs_plotting = bool(kwargs["abs_plotting"])
     fig: plt.Figure = plt.figure()
     ax: plt.Axes = fig.add_subplot(111, projection="3d")
 
     colormap: matplotlib.colors.Colormap = cm.get_cmap(colormap_name)
     max_F_mag = np.max(np.abs(forces))
     color_scalar_map = plt.cm.ScalarMappable(plt.Normalize(-max_F_mag, max_F_mag), colormap)
+    if abs_plotting:
+        color_scalar_map = plt.cm.ScalarMappable(plt.Normalize(0, max_F_mag), colormap)
     x_list = np.zeros(len(pts))
     y_list = np.zeros(len(pts))
     z_list = np.zeros(len(pts))

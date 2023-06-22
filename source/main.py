@@ -205,25 +205,20 @@ if __name__ == '__main__':
         d = np.array(((dx,), (dy,), (dz,)))
         L = np.linalg.norm(d)
         T_one = compute_global_to_local_transform(dx, dy, dz)
-        # assert np.all(np.isclose(np.array(((1,), (0,), (0,))), T_one @ (d/L)))
-        # assert np.isclose(np.linalg.det(T_one), 1)
         T = np.zeros((6, 6))
         T[0:3, 0:3] = T_one
         T[3:6, 3:6] = T_one
-        # assert np.isclose(np.linalg.det(T), 1)
-
         #   Build local stiffness matrix
         E = m.E
-        A = (p.r ** 2 - (p.r - p.t) ** 2) * np.pi
         #   Transform it to global coordinate frame
-        K_e = compute_element_stiffness_matrix(T, A * E / L)
+        K_e = compute_element_stiffness_matrix(T, p.A * E / L)
         #   Insert it into global matrix
         indices = (3 * e.point1, 3 * e.point1 + 1, 3 * e.point1 + 2, 3 * e.point2, 3 * e.point2 + 1, 3 * e.point2 + 2)
         K_g[np.ix_(indices, indices)] += K_e
-        mass = m.rho * A * L
+        mass = m.rho * p.A * L
         #   Add gravitational force
-        f_g[3 * e.point1 + 2] += -0.5 * m.rho * A * L * GRAVITY_VALUE
-        f_g[3 * e.point2 + 2] += -0.5 * m.rho * A * L * GRAVITY_VALUE
+        f_g[3 * e.point1 + 2] += -0.5 * m.rho * p.A * L * GRAVITY_VALUE
+        f_g[3 * e.point2 + 2] += -0.5 * m.rho * p.A * L * GRAVITY_VALUE
         M_g[indices, indices] += mass / 2
 
     if not SILENT_OPTION:
@@ -313,7 +308,7 @@ if __name__ == '__main__':
             exit(1)
 
     f_out_node.write(f"point label,mass,ux,uy,uz,Rx,Ry,Rz\n")
-    f_out_element.write(f"element label,point1,point2,F,sigma,sigma_y,sigma_b,percent_allowed\n")
+    f_out_element.write(f"element label,point1,point2,F,sigma,sigma_y,sigma_b,sigma_lim,percent_allowed\n")
 
     #   Postprocessing
     for i, n in enumerate(node_list):
@@ -338,23 +333,22 @@ if __name__ == '__main__':
         L = np.linalg.norm(d)
         d /= L
         p = profile_list[e.profile]
-        A = (p.r ** 2 - (p.r - p.t) ** 2) * np.pi
         m = material_list[e.material]
-        K = m.E * A / L
+        K = m.E * p.A / L
         stress_array[i] = F_e = K * np.dot((u2 - u1).flatten(), d)
         F_lim = 0
-        sigma_b = -(np.pi / L) ** 2 * m.E * np.pi * (p.r ** 4 - (p.r - p.t) ** 4) / 4 / A
+        sigma_b = -(np.pi / L) ** 2 * m.E * np.pi * p.I / 4 / p.A
         if F_e > 0:
-            F_lim = A * m.sigma_y
+            F_lim = p.A * m.sigma_y
         else:
-            F_lim = sigma_b * A
-            if np.abs(F_lim) > A * m.sigma_y:
-                F_lim = -A * m.sigma_y
+            F_lim = sigma_b * p.A
+            if np.abs(F_lim) > p.A * m.sigma_y:
+                F_lim = -p.A * m.sigma_y
         # print(f"Force {connection_list[i].label} is {F_e}, limit is {F_lim}")
         # print(f"Stress {connection_list[i].label} is, {F_e / A}, which is {np.abs(F_e / F_lim) * 100} % of allowed\n")
         # label,point1,point2,F,sigma,sigma_y,sigma_b,percent_allowed
-        f_out_element.write(f"{connection_list[i].label},{node_list[e.point1].label},{node_list[e.point2].label},{F_e},{F_e/A},{m.sigma_y},{sigma_b},{F_lim / A},{np.abs(F_e / F_lim) * 100}\n")
-        stress_array[i] /= A
+        f_out_element.write(f"{connection_list[i].label},{node_list[e.point1].label},{node_list[e.point2].label},{F_e},{F_e/p.A},{m.sigma_y},{sigma_b},{F_lim / p.A},{np.abs(F_e / F_lim) * 100}\n")
+        stress_array[i] /= p.A
     f_out_element.close()
     freq = np.real_if_close(np.sqrt(1 / eigenvalues), tol=10000) / (2 * np.pi)
     # save_displacements_to_file("sample.dis", node_list, u_g, r_g)
