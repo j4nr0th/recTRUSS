@@ -1,9 +1,9 @@
-points="example/points_structure1_fullstruct.csv"
+points="example/pts_structure1_fullstruct.csv"
 materials="example/material_sample.csv"
-natural_bcs="example/natural_structure1_fullstruct.csv"
-numerical_bcs="example/numerical_structure1_fullstruct.csv"
-profiles="example/profiles_structure1_fullstruct.csv"
-elements="example/elements_structure1_fullstruct.csv"
+natural_bcs="example/nat_structure1_fullstruct.csv"
+numerical_bcs="example/num_structure1_fullstruct.csv"
+profiles="example/pro_structure1_fullstruct.csv"
+elements="example/elm_structure1_fullstruct.csv"
 silent=false
 gravity=9.81
 show_unsolved=true
