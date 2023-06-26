@@ -1,9 +1,0 @@
-connection label,material label,profile label,point label 1,point label 2
-left edge, steel, base profile, bottom left, top left
-right edge, steel, base profile, bottom right, top right
-bottom edge, steel, base profile, bottom left, bottom right
-top edge, steel, base profile, top left, top right
-tl diagonal, aluminium, small profile, top left, peak
-tr diagonal, aluminium, small profile, top right, peak
-bl diagonal, aluminium, small profile, bottom left, peak
-br diagonal, aluminium, small profile, bottom right, peak
