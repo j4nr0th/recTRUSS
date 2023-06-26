@@ -1,6 +1,0 @@
-connection label,material label,profile label,point label 1,point label 2
-AB,steel,only profile,B,A
-BC,steel,only profile,B,C
-CD,steel,only profile,C,D
-AC,steel,only profile,A,C
-AD,steel,only profile,A,D
