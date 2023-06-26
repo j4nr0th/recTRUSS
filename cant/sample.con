@@ -1,9 +1,0 @@
-connection label,material label,profile label,point label 1,point label 2
-AB,shit,p1,A,B
-BC,shit,p1,B,C
-AD,shit,p1,A,D
-DB,shit,p1,D,B
-DE,shit,p1,D,E
-BE,shit,p1,B,E
-EC,shit,p1,E,C
-EF,shit,p1,E,F
